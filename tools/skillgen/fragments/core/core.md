@@ -345,8 +345,8 @@ detection  = json.loads(Path('graphify-out/.graphify_detect.json').read_text(enc
 
 # root= mirrors the --update runbook (#1361): relativize source_file to the same
 # base so the full build and incremental --update never drift apart on re-extract.
-# Dreamliner Check runs inside build_from_json (validate_extraction). Bad
-# extraction JSON fails closed with field-level schema errors.
+# Dreamliner Check (validate_extraction) runs inside build_from_json.
+# Dreamliner Check fails closed on bad extraction JSON with field-level errors.
 G = build_from_json(extraction, root='INPUT_PATH', directed=IS_DIRECTED)
 # Guard BEFORE any write: an empty extraction must not clobber a good graph.json /
 # GRAPH_REPORT.md / analysis sidecar. Check immediately after build (#1392).

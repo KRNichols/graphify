@@ -85,6 +85,11 @@ def test_dreamliner_check_branding_in_core_and_extraction_spec():
     for path, body in always.items():
         assert "Dreamliner Check" in body, path
         assert "validate_extraction" in body, path
+    platforms = gen.load_platforms()
+    for key in ("aider", "devin"):
+        body = gen.render(platforms[key])[0].content
+        assert "Dreamliner Check" in body, key
+        assert "validate_extraction" in body, key
 
 
 def test_lean_core_has_no_reference_only_content():
@@ -615,8 +620,8 @@ def test_monoliths_change_only_sanctioned_lines():
     The round-trip (multiset diff vs the pinned v8 blob) must come back clean:
     each added/removed line matches one of the documented sanctioned predicates
     in gen — the enum unification, the unified description, the chunk-cleanup
-    rewrite (#1172), the four #1392 runbook fixes, and semantic-cache source
-    scoping (#1757). Anything else is drift.
+    rewrite (#1172), the four #1392 runbook fixes, semantic-cache source
+    scoping (#1757), and Dreamliner Check product-name lines. Anything else is drift.
     """
     platforms = gen.load_platforms()
     for key in ("aider", "devin"):

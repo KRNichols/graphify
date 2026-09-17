@@ -1202,6 +1202,15 @@ def _is_community_label_export_fix_line(line: str) -> bool:
     )
 
 
+def _is_dreamliner_check_line(line: str) -> bool:
+    """Product-name lines for the extraction schema gate (Dreamliner Check).
+
+    The check is still ``validate_extraction`` / ``assert_valid``. These lines
+    only rename the user-facing product surface on the aider/devin monoliths.
+    """
+    return "Dreamliner Check" in line
+
+
 # Every line that may differ between a rendered monolith and its pristine v8
 # baseline. Each predicate documents one sanctioned change-class; a blank line is
 # allowed because the multi-line fix blocks insert spacing. Anything else failing
@@ -1223,6 +1232,7 @@ _SANCTIONED_MONOLITH_DIFFS = (
     _is_uv_from_interpreter_fix_line,
     _is_semantic_cache_scope_fix_line,
     _is_community_label_export_fix_line,
+    _is_dreamliner_check_line,
 )
 
 
