@@ -191,8 +191,20 @@ def test_skill_codex_has_no_multi_host_leftovers():
     assert "pip install dreamliner" not in text
     assert "uv tool install --upgrade dreamliner" not in text
     assert "git+https://github.com/KRNichols/graphify.git@cursor/dreamliner-codex-rebrand-5833" in text
-    leftover = Path(__file__).resolve().parents[1] / "graphify" / "command-kilo.md"
-    assert not leftover.exists()
+    root = Path(__file__).resolve().parents[1]
+    leftovers = [
+        root / "graphify" / "command-kilo.md",
+        root / "graphify" / "always_on" / "claude-md.md",
+        root / "graphify" / "always_on" / "gemini-md.md",
+        root / "tools" / "skillgen" / "fragments" / "always-on" / "claude-md.md",
+        root / "tools" / "skillgen" / "fragments" / "always-on" / "gemini-md.md",
+        root / "tools" / "skillgen" / "fragments" / "always-on" / "vscode-instructions.md",
+        root / "tools" / "skillgen" / "fragments" / "core" / "aider.md",
+        root / "tools" / "skillgen" / "fragments" / "core" / "devin.md",
+        root / "tools" / "skillgen" / "fragments" / "extra" / "kilo-rules.md",
+    ]
+    for leftover in leftovers:
+        assert not leftover.exists(), leftover
 
 
 def test_readme_has_clean_machine_runbook():
