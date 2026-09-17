@@ -31,6 +31,7 @@ Type `/graphify` in your AI coding assistant and it maps your entire project (co
 
 - **Code maps for free, fully local.** Code is parsed with tree-sitter AST: deterministic, no LLM, nothing leaves your machine. (Docs, PDFs, images and video use your assistant's model, or a configured API key, for a semantic pass.)
 - **Every edge is explained.** Each connection is tagged `EXTRACTED` (explicit in the source) or `INFERRED` (resolved by graphify), so you can tell what was read directly from what was inferred.
+- **Dreamliner Check before the graph is assembled.** `extract` / `build` run `validate_extraction` so bad extraction JSON fails closed with field-level errors. Confidence must be `EXTRACTED`, `INFERRED`, or `AMBIGUOUS`. The check lives in `graphify/validate.py`; the product name is Dreamliner Check.
 - **Not a vector index.** No embeddings, no vector store: a real graph you traverse. Ask a question, trace the path between two things, or explain one concept.
 
 > Want this always-on, updating in the background across your code, docs, and meetings rather than only on demand? That is what we are building at **[graphify.com](https://graphify.com)**, and early access is open now at **[app.graphify.com](https://app.graphify.com/login)**.

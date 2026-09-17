@@ -41,6 +41,8 @@ Every relationship is tagged with one of three labels:
 | `INFERRED` | A reasonable inference Claude made, with a `confidence_score` (0.0–1.0) |
 | `AMBIGUOUS` | Uncertain — flagged in the report for manual review |
 
+**Dreamliner Check** (`validate_extraction` in `graphify/validate.py`) is the schema gate on that JSON. `extract` / `build` call it before graph assembly: a bad payload fails closed with field-level errors (missing keys, invalid `file_type`, confidence outside `EXTRACTED|INFERRED|AMBIGUOUS`). The product name is Dreamliner Check; the function is unchanged.
+
 EXTRACTED edges always have confidence 1.0. INFERRED edges use a discrete rubric:
 - **0.95** — near-certain (explicit cross-file reference, one plausible target)
 - **0.85** — strong evidence (naming + context align)

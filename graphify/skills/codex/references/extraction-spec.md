@@ -13,6 +13,7 @@ Rules:
 - EXTRACTED: relationship explicit in source (import, call, citation)
 - INFERRED: reasonable inference (shared structure, implied dependency)
 - AMBIGUOUS: uncertain — flag it, do not omit
+- Dreamliner Check rejects schema-invalid JSON (required fields, file_type enum, confidence EXTRACTED|INFERRED|AMBIGUOUS).
 - Code files: semantic edges AST cannot find. Do not re-extract imports. When adding `calls` edges: source is the caller, target is the callee, never reversed; keep `calls` within one language.
 - Doc/paper files: named concepts, entities, citations. Store rationale (WHY decisions were made) as a `rationale` attribute on the relevant node, not as a separate node. Use `file_type:"rationale"` for concept-like nodes (ideas, principles, mechanisms) and `file_type:"concept"` for named concepts. `file_type` MUST be one of exactly these six values: `code`, `document`, `paper`, `image`, `rationale`, `concept`. Any other value is invalid and will be rejected.
 - Image files: use vision — understand what the image IS, not just OCR

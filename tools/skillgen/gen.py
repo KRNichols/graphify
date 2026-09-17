@@ -99,6 +99,30 @@ ALWAYS_ON_BLOCKS = {
 # to the baseline before the byte-for-byte comparison; anything not covered here
 # still fails the guard, so unrelated drift cannot slip through. Each entry is a
 # one-time, audited edit to the otherwise-immutable v8 baseline.
+_DREAMLINER_CHECK_BULLET = (
+    "- Extraction JSON is gated by Dreamliner Check (`validate_extraction` / "
+    "`assert_valid`). Bad payloads fail closed. Do not delete or weaken "
+    "graphify/validate.py."
+)
+_DREAMLINER_CHECK_SENTENCE = (
+    " Extraction JSON is gated by Dreamliner Check (`validate_extraction` / "
+    "`assert_valid`); bad payloads fail closed. Do not delete or weaken "
+    "graphify/validate.py."
+)
+_AFTER_MODIFYING_CODE = (
+    "- After modifying code, run `graphify update .` to keep the graph current "
+    "(AST-only, no API cost)."
+)
+_AFTER_MODIFYING_CODE_FILES = (
+    "- After modifying code files in this session, run `graphify update .` to "
+    "keep the graph current (AST-only, no API cost)"
+)
+_KIRO_TAIL = (
+    "Read `GRAPH_REPORT.md` only for broad architecture review or when those "
+    "commands do not surface enough context."
+)
+_VSCODE_TAIL = "Type `/graphify` in Copilot Chat to build or update the graph."
+
 ALWAYS_ON_SANCTIONED_EDITS: dict[str, tuple[tuple[str, str], ...]] = {
     # #1530: install guidance must stay host-generic — do not tell agents to
     # invoke a literal `skill` tool with `skill: "graphify"`, which is
@@ -109,6 +133,42 @@ ALWAYS_ON_SANCTIONED_EDITS: dict[str, tuple[tuple[str, str], ...]] = {
             '`skill: "graphify"` before doing anything else.',
             "When the user types `/graphify`, use the installed graphify skill or instructions "
             "before doing anything else.",
+        ),
+        (
+            _AFTER_MODIFYING_CODE,
+            _AFTER_MODIFYING_CODE + "\n" + _DREAMLINER_CHECK_BULLET,
+        ),
+    ),
+    # Dreamliner Check: product name for the extraction schema gate. The
+    # underlying function remains validate_extraction / assert_valid.
+    "_CLAUDE_MD_SECTION": (
+        (
+            _AFTER_MODIFYING_CODE,
+            _AFTER_MODIFYING_CODE + "\n" + _DREAMLINER_CHECK_BULLET,
+        ),
+    ),
+    "_GEMINI_MD_SECTION": (
+        (
+            _AFTER_MODIFYING_CODE,
+            _AFTER_MODIFYING_CODE + "\n" + _DREAMLINER_CHECK_BULLET,
+        ),
+    ),
+    "_ANTIGRAVITY_RULES": (
+        (
+            _AFTER_MODIFYING_CODE_FILES,
+            _AFTER_MODIFYING_CODE_FILES + "\n" + _DREAMLINER_CHECK_BULLET,
+        ),
+    ),
+    "_KIRO_STEERING": (
+        (
+            _KIRO_TAIL,
+            _KIRO_TAIL + _DREAMLINER_CHECK_SENTENCE,
+        ),
+    ),
+    "_VSCODE_INSTRUCTIONS_SECTION": (
+        (
+            _VSCODE_TAIL,
+            _VSCODE_TAIL + "\n\n" + _DREAMLINER_CHECK_BULLET.lstrip("- "),
         ),
     ),
 }
