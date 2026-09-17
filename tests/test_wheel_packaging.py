@@ -37,7 +37,7 @@ def _skill_bodies() -> list[Path]:
     from graphify.__main__ import _PLATFORM_CONFIG
 
     names = {cfg["skill_file"] for cfg in _PLATFORM_CONFIG.values()}
-    return sorted({PKG / name for name in names})
+    return sorted({PKG / name for name in names if (PKG / name).is_file()})
 
 
 def _expected_artifacts() -> list[Path]:

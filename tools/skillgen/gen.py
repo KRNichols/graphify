@@ -8,8 +8,8 @@ guards them against drift.
 
 Usage (from the repo root)::
 
-    python -m tools.skillgen                 # regen every platform's artifacts
-    python -m tools.skillgen --platform claude
+    python -m tools.skillgen                 # regen the Codex artifacts
+    python -m tools.skillgen --platform codex
     python -m tools.skillgen --check         # byte-diff render vs committed + expected/, exit 1 on drift
     python -m tools.skillgen --audit-coverage# per host: assert every heading of that host's own v8 body single-homes in its render
     python -m tools.skillgen --schema-singleton  # assert the file_type enum is byte-identical everywhere
@@ -84,12 +84,7 @@ ALWAYS_ON_BASELINE_REF = f"{_V8_BASELINE_SHA}:graphify/__main__.py"
 # the matching fragment under fragments/always-on/. These are not platform-
 # specific, so they render once in a full run (not under --platform).
 ALWAYS_ON_BLOCKS = {
-    "claude-md": "_CLAUDE_MD_SECTION",
     "agents-md": "_AGENTS_MD_SECTION",
-    "gemini-md": "_GEMINI_MD_SECTION",
-    "vscode-instructions": "_VSCODE_INSTRUCTIONS_SECTION",
-    "antigravity-rules": "_ANTIGRAVITY_RULES",
-    "kiro-steering": "_KIRO_STEERING",
 }
 
 # Sanctioned divergences from the frozen always-on baseline above. The roundtrip
@@ -165,7 +160,21 @@ _TRAE_PRETOOLUSE_NOTE = (
     "rebuild on tool use. Run `/graphify --update` manually after code changes if "
     "the graph needs refreshing.\n"
 )
+_CODEX_PRETOOLUSE_NOTE = (
+    "\n> **Note:** `graphify install --project` and `graphify codex install` also "
+    "register a `PreToolUse` hook in `.codex/hooks.json` (`graphify hook-check`), "
+    "but that entry is deliberately a **no-op**: Codex Desktop rejects "
+    "`hookSpecificOutput.additionalContext` on `PreToolUse`. AGENTS.md is the "
+    "always-on mechanism.\n"
+)
 _AGENTS_MD_HOOKS: dict[str, dict[str, str]] = {
+    "codex": {
+        "heading_suffix": " (Codex)",
+        "host_display": "Codex",
+        "install_block": "graphify install --project     # or: graphify codex install",
+        "uninstall_block": "graphify uninstall --project  # or: graphify codex uninstall",
+        "pretooluse_note": _CODEX_PRETOOLUSE_NOTE,
+    },
     "trae": {
         "heading_suffix": " (Trae)",
         "host_display": "Trae",
@@ -229,6 +238,13 @@ SHARED_INTRO_ALLOWLIST: frozenset[str] = frozenset({
 })
 
 _CONSOLIDATION_ALLOWLIST: dict[str, frozenset[str]] = {
+    # This Codex-only fork wires always-on through AGENTS.md. The pre-split
+    # Codex body still named the shared CLAUDE.md hooks heading; the content
+    # lives under the AGENTS.md heading now.
+    "codex": frozenset({
+        "## For the commit hook and native CLAUDE.md integration",
+        "## For native CLAUDE.md integration",
+    }),
     # kilo's terse v8 step/part/section headings, renamed/re-leveled by the
     # shared lean core. Content is preserved under the core's richer headings
     # (Step 4 build/cluster/analyze, Step 5 label, Step 6 HTML, Step 9 report)
@@ -619,14 +635,12 @@ def render(platform: Platform) -> list[RenderedArtifact]:
 
 
 def render_always_on() -> list[RenderedArtifact]:
-    """Render the six always-on instruction blocks to graphify/always_on/*.md.
+    """Render the Codex always-on instruction block to graphify/always_on/.
 
-    These are the blocks the installer injects into shared files (CLAUDE.md,
-    AGENTS.md, GEMINI.md, .github/copilot-instructions.md, Antigravity rules,
-    Kiro steering). They used to be triple-quoted constants in __main__.py and
-    are now packaged markdown the module reads at load. Rendering them through
-    skillgen puts them under the --check / expected/ drift guard like every other
-    generated artifact. They are not platform-specific, so they render once.
+    This fork ships only AGENTS.md. The block used to be a triple-quoted
+    constant in __main__.py and is now packaged markdown the installer reads
+    at load. Rendering it through skillgen puts it under the --check /
+    expected/ drift guard like every other generated artifact.
     """
     out: list[RenderedArtifact] = []
     for basename in sorted(ALWAYS_ON_BLOCKS):

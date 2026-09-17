@@ -1,6 +1,6 @@
 # Architecture
 
-graphify is a Claude Code skill backed by a Python library. The skill orchestrates the library; the library can be used standalone.
+graphify is a Codex skill backed by a Python library. The skill orchestrates the library; the library can be used standalone.
 
 ## Pipeline
 

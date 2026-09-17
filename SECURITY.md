@@ -22,7 +22,7 @@ We will acknowledge receipt within 48 hours and aim to release a fix within 7 da
 
 ## Security Model
 
-graphify is a **local development tool**. It runs as a Claude Code skill and optionally as a local MCP stdio server. It makes no network calls during graph analysis - only during `ingest` (explicit URL fetch by the user).
+graphify is a **local development tool**. It runs as a Codex skill and optionally as a local MCP stdio server. It makes no network calls during graph analysis - only during `ingest` (explicit URL fetch by the user).
 
 ### Threat Surface
 
