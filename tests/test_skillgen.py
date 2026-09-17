@@ -75,6 +75,23 @@ def _claude_artifacts():
     return core.content, refs
 
 
+def test_dreamliner_check_branding_in_core_and_extraction_spec():
+    """Product-level schema-gate name is Dreamliner Check, wired to validate_extraction."""
+    core, refs = _claude_artifacts()
+    assert "Dreamliner Check" in core
+    assert "validate_extraction" in core
+    assert "Dreamliner Check" in refs["extraction-spec.md"]
+    always = {a.path: a.content for a in gen.render_always_on()}
+    for path, body in always.items():
+        assert "Dreamliner Check" in body, path
+        assert "validate_extraction" in body, path
+    platforms = gen.load_platforms()
+    for key in ("aider", "devin"):
+        body = gen.render(platforms[key])[0].content
+        assert "Dreamliner Check" in body, key
+        assert "validate_extraction" in body, key
+
+
 def test_lean_core_has_no_reference_only_content():
     """The core must not inline the execution detail of an on-demand reference.
 
@@ -603,8 +620,8 @@ def test_monoliths_change_only_sanctioned_lines():
     The round-trip (multiset diff vs the pinned v8 blob) must come back clean:
     each added/removed line matches one of the documented sanctioned predicates
     in gen — the enum unification, the unified description, the chunk-cleanup
-    rewrite (#1172), the four #1392 runbook fixes, and semantic-cache source
-    scoping (#1757). Anything else is drift.
+    rewrite (#1172), the four #1392 runbook fixes, semantic-cache source
+    scoping (#1757), and Dreamliner Check product-name lines. Anything else is drift.
     """
     platforms = gen.load_platforms()
     for key in ("aider", "devin"):
@@ -732,8 +749,9 @@ def test_always_on_roundtrip_is_byte_faithful():
     contracts silently change.
     """
     # The guard passes with zero problems: every always-on block reproduces its
-    # frozen baseline, with the agents-md block allowed exactly the #1530
-    # sanctioned substitution recorded in gen.ALWAYS_ON_SANCTIONED_EDITS.
+    # frozen baseline, with the sanctioned substitutions in
+    # gen.ALWAYS_ON_SANCTIONED_EDITS (#1530 host-generic install sentence and
+    # Dreamliner Check product-name lines).
     problems = gen.always_on_roundtrip()
     assert problems == []
 
@@ -750,17 +768,20 @@ def test_always_on_roundtrip_is_byte_faithful():
         "When the user types `/graphify`, use the installed graphify skill or instructions "
         "before doing anything else."
     )
-    # The sanctioned-edit registry holds exactly this single old->new substitution.
-    assert gen.ALWAYS_ON_SANCTIONED_EDITS["_AGENTS_MD_SECTION"] == (
-        (old_instruction, new_instruction),
-    )
+    # The sanctioned-edit registry holds the #1530 host-generic install sentence
+    # plus the Dreamliner Check product-name bullet.
+    agents_edits = gen.ALWAYS_ON_SANCTIONED_EDITS["_AGENTS_MD_SECTION"]
+    assert agents_edits[0] == (old_instruction, new_instruction)
+    assert any("Dreamliner Check" in new for _, new in agents_edits)
     baseline_agents = gen._always_on_constants(gen.ALWAYS_ON_BASELINE_REF)["_AGENTS_MD_SECTION"]
-    # The ONLY divergence from the frozen baseline is the sanctioned sentence —
-    # any other byte drift would have surfaced as a problem above.
-    assert old_instruction in baseline_agents
-    assert baseline_agents.replace(old_instruction, new_instruction) == rendered_agents
+    expected_agents = baseline_agents
+    for old, new in agents_edits:
+        assert old in expected_agents
+        expected_agents = expected_agents.replace(old, new)
+    assert expected_agents == rendered_agents
     assert "`skill` tool" not in rendered_agents
     assert 'skill: "graphify"' not in rendered_agents
+    assert "Dreamliner Check" in rendered_agents
 
 
 def test_extracted_constants_equal_the_packaged_always_on_files():

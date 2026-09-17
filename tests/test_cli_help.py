@@ -39,3 +39,19 @@ def test_help_lists_prs_provider_and_export_formats():
     # Silent hook internals — deliberately excluded from user-facing help.
     assert "hook-check" not in out
     assert "hook-guard" not in out
+
+
+def test_help_lists_dreamliner_check_not_verify_product():
+    """Product-level schema-gate branding is Dreamliner Check, not Verify."""
+    r = subprocess.run(
+        [PYTHON, "-m", "graphify", "--help"],
+        capture_output=True,
+        text=True,
+    )
+    assert r.returncode == 0, f"--help should exit 0: {r.stderr}"
+    out = r.stdout
+    assert "Dreamliner Check" in out
+    assert "validate_extraction" in out
+    assert "EXTRACTED|INFERRED|AMBIGUOUS" in out
+    assert "  verify" not in out
+    assert "Verifier" not in out

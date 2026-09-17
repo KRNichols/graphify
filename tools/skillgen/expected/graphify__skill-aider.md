@@ -261,6 +261,7 @@ Process each file one at a time. For each file:
    - EXTRACTED: relationship explicit in source (import, call, citation)
    - INFERRED: reasonable inference (shared structure, implied dependency)
    - AMBIGUOUS: uncertain — flag it, do not omit
+   - Dreamliner Check rejects schema-invalid JSON (required fields, file_type enum, confidence EXTRACTED|INFERRED|AMBIGUOUS).
    - Code files: semantic edges AST cannot find. Do not re-extract imports.
    - Doc/paper files: named concepts, entities, citations. Store rationale (WHY decisions were made) as a `rationale` attribute on the relevant node, not as a separate node. Use `file_type:"rationale"` for concept-like nodes (ideas, principles, mechanisms) and `file_type:"concept"` for named concepts. `file_type` MUST be one of exactly these six values: `code`, `document`, `paper`, `image`, `rationale`, `concept`. When adding `calls` edges: source is caller, target is callee.
    - Image files: use vision — understand what the image IS, not just OCR
@@ -403,6 +404,8 @@ from pathlib import Path
 extraction = json.loads(Path('.graphify_extract.json').read_text())
 detection  = json.loads(Path('.graphify_detect.json').read_text())
 
+# Dreamliner Check (validate_extraction) runs inside build_from_json.
+# Dreamliner Check fails closed on bad extraction JSON with field-level errors.
 G = build_from_json(extraction, directed=IS_DIRECTED)
 # Guard BEFORE any write: an empty extraction must not clobber a good graph.json /
 # GRAPH_REPORT.md / analysis sidecar. Check immediately after build (#1392).
@@ -1277,6 +1280,7 @@ graphify claude uninstall  # remove the section
 ## Honesty Rules
 
 - Never invent an edge. If unsure, use AMBIGUOUS.
+- Never ship extraction JSON that Dreamliner Check would reject. Confidence must be EXTRACTED, INFERRED, or AMBIGUOUS.
 - Never skip the corpus check warning.
 - Always show token cost in the report.
 - Never hide cohesion scores behind symbols - show the raw number.

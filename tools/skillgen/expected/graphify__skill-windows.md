@@ -437,6 +437,8 @@ detection  = json.loads(Path('graphify-out/.graphify_detect.json').read_text(enc
 
 # root= mirrors the --update runbook (#1361): relativize source_file to the same
 # base so the full build and incremental --update never drift apart on re-extract.
+# Dreamliner Check (validate_extraction) runs inside build_from_json.
+# Dreamliner Check fails closed on bad extraction JSON with field-level errors.
 G = build_from_json(extraction, root='INPUT_PATH', directed=IS_DIRECTED)
 # Guard BEFORE any write: an empty extraction must not clobber a good graph.json /
 # GRAPH_REPORT.md / analysis sidecar. Check immediately after build (#1392).
@@ -749,6 +751,7 @@ If vertical scrolling breaks in PowerShell after running graphify, this is cause
 ## Honesty Rules
 
 - Never invent an edge. If unsure, use AMBIGUOUS.
+- Never ship extraction JSON that Dreamliner Check would reject. Confidence must be EXTRACTED, INFERRED, or AMBIGUOUS.
 - Never skip the corpus check warning.
 - Always show token cost in the report.
 - Never hide cohesion scores behind symbols - show the raw number.

@@ -13,6 +13,7 @@ Rules:
 - EXTRACTED: relationship explicit in source (import, call, citation, "see §3.2")
 - INFERRED: reasonable inference (shared data structure, implied dependency)
 - AMBIGUOUS: uncertain - flag for review, do not omit
+- Dreamliner Check rejects schema-invalid JSON (required fields, file_type enum, confidence EXTRACTED|INFERRED|AMBIGUOUS).
 
 Code files: focus on semantic edges AST cannot find (call relationships, shared data, arch patterns).
   Do not re-extract imports - AST already has those.

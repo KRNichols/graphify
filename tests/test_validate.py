@@ -87,6 +87,59 @@ def test_assert_valid_passes_silently():
     assert_valid(VALID)  # should not raise
 
 
+def test_extracted_inferred_ambiguous_all_accepted():
+    """Dreamliner Check keeps EXTRACTED|INFERRED|AMBIGUOUS as the valid set."""
+    for confidence in ("EXTRACTED", "INFERRED", "AMBIGUOUS"):
+        data = {
+            "nodes": [
+                {"id": "n1", "label": "A", "file_type": "code", "source_file": "a.py"},
+                {"id": "n2", "label": "B", "file_type": "code", "source_file": "b.py"},
+            ],
+            "edges": [
+                {"source": "n1", "target": "n2", "relation": "calls",
+                 "confidence": confidence, "source_file": "a.py"},
+            ],
+        }
+        assert validate_extraction(data) == [], confidence
+
+
+def test_assert_valid_errors_are_actionable():
+    """Bad extraction JSON fails closed with field-level error text."""
+    with pytest.raises(ValueError, match="invalid confidence") as excinfo:
+        assert_valid({
+            "nodes": [
+                {"id": "n1", "label": "A", "file_type": "code", "source_file": "a.py"},
+                {"id": "n2", "label": "B", "file_type": "code", "source_file": "b.py"},
+            ],
+            "edges": [
+                {"source": "n1", "target": "n2", "relation": "calls",
+                 "confidence": "CERTAIN", "source_file": "a.py"},
+            ],
+        })
+    msg = str(excinfo.value)
+    assert "EXTRACTED" in msg
+    assert "INFERRED" in msg
+    assert "AMBIGUOUS" in msg
+    assert "•" in msg
+
+
+def test_dreamliner_check_is_validate_extraction():
+    """Product name is Dreamliner Check; the kept function is validate_extraction."""
+    import graphify.validate as validate_mod
+    assert callable(validate_mod.validate_extraction)
+    assert callable(validate_mod.assert_valid)
+    assert validate_mod.VALID_CONFIDENCES == {"EXTRACTED", "INFERRED", "AMBIGUOUS"}
+
+
+def test_build_still_wires_validate_extraction():
+    """extract/build keep calling validate_extraction — Dreamliner is a name, not a fork."""
+    import inspect
+    from graphify import build
+    source = inspect.getsource(build)
+    assert "from .validate import validate_extraction" in source
+    assert "validate_extraction(extraction)" in source
+
+
 def test_legacy_aliases_valid_after_build_canonicalization():
     # #2194: build_from_json folds legacy aliases (name->label,
     # path->source_file, type->relation, confidence_score->confidence) in

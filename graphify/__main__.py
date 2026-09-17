@@ -620,6 +620,8 @@ def _run_cli() -> None:
         print("    --top-k-edges N         per-symbol outbound edges in inspector (default 12)")
         print("    --label NAME            project label in header")
         print("  extract <path>          headless full extraction (AST + semantic LLM) for CI/scripts")
+        print("                            Dreamliner Check (validate_extraction) rejects malformed")
+        print("                            extraction JSON; confidence must be EXTRACTED|INFERRED|AMBIGUOUS")
         print("    --backend B             gemini|kimi|claude|openai|deepseek|ollama (default: whichever API key is set)")
         print("                            openai also reaches self-hosted OpenAI-compatible servers (llama.cpp,")
         print("                            vLLM, LM Studio): set OPENAI_BASE_URL (e.g. http://localhost:8080/v1)")
