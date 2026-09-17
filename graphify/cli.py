@@ -85,6 +85,14 @@ def _default_graph_path() -> str:
     return str(Path(_GRAPHIFY_OUT) / "graph.json")
 
 
+def _die_missing_graph(path: Path) -> None:
+    """Exit 1 with an actionable missing-graph message (not a bare path)."""
+    from graphify.errors import emit_missing_graph
+
+    emit_missing_graph(Path(path))
+    sys.exit(1)
+
+
 def _stamped_manifest_files(
     files_by_type: dict[str, list[str]],
     sem_result: dict,
@@ -1062,6 +1070,11 @@ def _reenter_main() -> None:
 
 
 def dispatch_command(cmd: str) -> None:
+    if cmd == "check":
+        from graphify.errors import run_check
+
+        project = "--project" in sys.argv[2:]
+        raise SystemExit(run_check(project=project, project_dir=Path(".")))
     if cmd == "provider":
         from graphify.llm import _custom_providers_path, BACKENDS
         import json as _json
@@ -1243,8 +1256,7 @@ def dispatch_command(cmd: str) -> None:
                 i += 1
         gp = Path(graph_path).resolve()
         if not gp.exists():
-            print(f"error: graph file not found: {gp}", file=sys.stderr)
-            sys.exit(1)
+            _die_missing_graph(gp)
         if not gp.suffix == ".json":
             print(f"error: graph file must be a .json file", file=sys.stderr)
             sys.exit(1)
@@ -1362,8 +1374,7 @@ def dispatch_command(cmd: str) -> None:
                 i += 1
         gp = Path(graph_path).resolve()
         if not gp.exists():
-            print(f"error: graph file not found: {gp}", file=sys.stderr)
-            sys.exit(1)
+            _die_missing_graph(gp)
         if not gp.suffix == ".json":
             print("error: graph file must be a .json file", file=sys.stderr)
             sys.exit(1)
@@ -1441,8 +1452,7 @@ def dispatch_command(cmd: str) -> None:
                 i += 1
         gp = Path(graph_path).resolve()
         if not gp.exists():
-            print(f"error: graph file not found: {gp}", file=sys.stderr)
-            sys.exit(1)
+            _die_missing_graph(gp)
         if not gp.suffix == ".json":
             print("error: graph file must be a .json file", file=sys.stderr)
             sys.exit(1)
@@ -1588,8 +1598,7 @@ def dispatch_command(cmd: str) -> None:
         undirected = direction_flag == "undirected"
         gp = Path(graph_path).resolve()
         if not gp.exists():
-            print(f"error: graph file not found: {gp}", file=sys.stderr)
-            sys.exit(1)
+            _die_missing_graph(gp)
         _enforce_graph_size_cap_or_exit(gp)
         _raw = json.loads(gp.read_text(encoding="utf-8"))
         if "links" not in _raw and "edges" in _raw:
@@ -1728,8 +1737,7 @@ def dispatch_command(cmd: str) -> None:
                 graph_path = args[i + 1]
         gp = Path(graph_path).resolve()
         if not gp.exists():
-            print(f"error: graph file not found: {gp}", file=sys.stderr)
-            sys.exit(1)
+            _die_missing_graph(gp)
         _enforce_graph_size_cap_or_exit(gp)
         _raw = json.loads(gp.read_text(encoding="utf-8"))
         if "links" not in _raw and "edges" in _raw:
@@ -2062,11 +2070,7 @@ def dispatch_command(cmd: str) -> None:
             watch_path = Path(".")
         graph_json = graph_override if graph_override is not None else watch_path / _GRAPHIFY_OUT / "graph.json"
         if not graph_json.exists():
-            print(
-                f"error: no graph found at {graph_json} — run /graphify first",
-                file=sys.stderr,
-            )
-            sys.exit(1)
+            _die_missing_graph(graph_json)
         from networkx.readwrite import json_graph as _jg
         from graphify.build import build_from_json
         from graphify.cluster import cluster, score_all, remap_communities_to_previous
@@ -2527,8 +2531,7 @@ def dispatch_command(cmd: str) -> None:
             else:
                 i_arg += 1
         if not graph_path.is_file():
-            print(f"error: graph.json not found at {graph_path}", file=sys.stderr)
-            sys.exit(1)
+            _die_missing_graph(graph_path)
         _enforce_graph_size_cap_or_exit(graph_path)
         if output_path is None:
             output_path = graph_path.parent / "GRAPH_TREE.html"
@@ -2906,8 +2909,7 @@ def dispatch_command(cmd: str) -> None:
         report_path = report_path.expanduser()
 
         if not graph_path.exists():
-            print(f"error: graph not found: {graph_path}. Run /graphify <path> first.", file=sys.stderr)
-            sys.exit(1)
+            _die_missing_graph(graph_path)
 
         if subcmd == "callflow-html":
             from graphify.callflow_html import write_callflow_html as _write_callflow_html
@@ -4449,12 +4451,13 @@ def dispatch_command(cmd: str) -> None:
             G = _build([merged], dedup=not no_dedup, dedup_llm_backend=dedup_backend, root=target)
         stages.mark("build")
         if G.number_of_nodes() == 0:
+            from graphify.errors import empty_graph_issue, emit_issues
+
             print(
-                "[graphify extract] graph is empty — extraction produced no nodes. "
-                "Possible causes: all files skipped, binary-only corpus, or LLM "
-                "returned no edges.",
+                "[graphify extract] graph is empty — extraction produced no nodes.",
                 file=sys.stderr,
             )
+            emit_issues([empty_graph_issue()])
             sys.exit(1)
 
         communities = _cluster(G, resolution=cli_resolution, exclude_hubs_percentile=cli_exclude_hubs)

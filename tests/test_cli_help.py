@@ -36,6 +36,7 @@ def test_help_lists_prs_provider_and_export_formats():
         assert f"export {fmt}" in out, (
             f"`graphify --help` must list export {fmt} (#3140)"
         )
+    assert "  check" in out, "`graphify --help` must list check (Codex clean-machine diagnosis)"
     # Silent hook internals — deliberately excluded from user-facing help.
     assert "hook-check" not in out
     assert "hook-guard" not in out
