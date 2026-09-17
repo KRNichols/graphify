@@ -1,13 +1,13 @@
-"""graphify install/uninstall subsystem.
+"""Dreamliner install/uninstall subsystem.
 
-The per-platform skill/hook installers and uninstallers, extracted verbatim from
-graphify/__main__.py so the CLI dispatcher (`main`) stays readable. Import path is
-unchanged: `graphify.__main__` re-exports every name defined here, so
-`from graphify.__main__ import claude_install` (etc.) keeps working.
+Codex is the only first-class host on this variant. Historical per-platform
+installers stay in this module so leftover copies can be uninstalled and
+internal tests can still exercise them, but the Dreamliner CLI surface gates
+Claude / Cursor / Gemini and other multi-host paths.
 
-Lives at graphify/install.py (same package dir as __main__) on purpose: the
-installers resolve packaged assets via `Path(__file__).parent / "always_on"` and
-`/ "skills"`, which only works from within the graphify/ directory.
+Import path is unchanged: `graphify.__main__` re-exports every name defined
+here. Lives at graphify/install.py on purpose: installers resolve packaged
+assets via `Path(__file__).parent / "always_on"` and `/ "skills"`.
 """
 
 from __future__ import annotations
@@ -29,6 +29,11 @@ try:
 except Exception:
     __version__ = "unknown"
 
+from graphify.brand import CLI as _CLI
+from graphify.brand import FIRST_CLASS_PLATFORMS
+from graphify.brand import INVOKE as _INVOKE
+from graphify.brand import PRODUCT as _PRODUCT
+from graphify.brand import SKILL as _SKILL
 from graphify.paths import GRAPHIFY_OUT as _GRAPHIFY_OUT
 from graphify.paths import os_replace_with_fallback as _os_replace_with_fallback
 
@@ -261,6 +266,8 @@ def _copy_skill_file(platform_name: str, *, project: bool = False, project_dir: 
 
     _write_version_stamp(skill_dst, __version__)
     print(f"  skill installed  ->  {skill_dst}")
+    if platform_name == "codex":
+        _remove_legacy_codex_skill(project=project, project_dir=project_dir)
     return skill_dst
 def _remove_skill_file(platform_name: str, *, project: bool = False, project_dir: Path | None = None) -> bool:
     """Remove a platform skill file and its version stamp without touching other scopes."""
@@ -279,6 +286,40 @@ def _remove_skill_file(platform_name: str, *, project: bool = False, project_dir
         shutil.rmtree(refs_dir)
         removed = True
     for d in (skill_dst.parent, skill_dst.parent.parent, skill_dst.parent.parent.parent):
+        try:
+            d.rmdir()
+        except OSError:
+            break
+    if platform_name == "codex":
+        # Pre-Dreamliner installs lived at .codex/skills/graphify/.
+        removed = _remove_legacy_codex_skill(project=project, project_dir=project_dir) or removed
+    return removed
+
+
+def _legacy_codex_skill_dst(*, project: bool = False, project_dir: Path | None = None) -> Path:
+    root = (project_dir or Path(".")) if project else Path.home()
+    return root / ".codex" / "skills" / "graphify" / "SKILL.md"
+
+
+def _remove_legacy_codex_skill(*, project: bool = False, project_dir: Path | None = None) -> bool:
+    """Remove a leftover Graphify Codex skill tree after the Dreamliner rename."""
+    skill_dst = _legacy_codex_skill_dst(project=project, project_dir=project_dir)
+    if not skill_dst.parent.exists():
+        return False
+    removed = False
+    if skill_dst.exists():
+        skill_dst.unlink()
+        print(f"  leftover skill   ->  removed {skill_dst}")
+        removed = True
+    version_file = skill_dst.parent / ".graphify_version"
+    if version_file.exists():
+        version_file.unlink()
+        removed = True
+    refs_dir = skill_dst.parent / "references"
+    if refs_dir.exists():
+        shutil.rmtree(refs_dir)
+        removed = True
+    for d in (skill_dst.parent, skill_dst.parent.parent):
         try:
             d.rmdir()
         except OSError:
@@ -402,7 +443,7 @@ _PLATFORM_CONFIG: dict[str, dict] = {
     },
     "codex": {
         "skill_file": "skill-codex.md",
-        "skill_dst": Path(".codex") / "skills" / "graphify" / "SKILL.md",
+        "skill_dst": Path(".codex") / "skills" / _SKILL / "SKILL.md",
         "claude_md": False,
         "skill_refs": "codex",
     },
@@ -631,7 +672,7 @@ def _remove_marker_section(content: str, marker: str, boundary_prefix: str = "##
 
 
 def _print_banner() -> None:
-    """Amber brain banner on graphify install. TTY-only, never raises."""
+    """Amber brain banner on Dreamliner install. TTY-only, never raises."""
     if not sys.stdout.isatty():
         return
     try:
@@ -653,12 +694,12 @@ def _print_banner() -> None:
   ╰──◉──╯     ╰──◉──╯
            ◉
 
-  █▀▀ █▀█ ▄▀█ █▀█ █ █ █ █▀▀ █▄█
-  █▄█ █▀▄ █▀█ █▀▀ █▀█ █ █▀   █{D}  {__version__}{R}
+  DREAMLINER  {D}{__version__}{R}
+  Codex-only knowledge graph
 """)
     except Exception:
         pass
-def install(platform: str = "claude", *, project: bool = False, project_dir: Path | None = None) -> None:
+def install(platform: str = "codex", *, project: bool = False, project_dir: Path | None = None) -> None:
     _print_banner()
     platform = _canonical_platform(platform)
     if platform == "gemini":
@@ -680,6 +721,8 @@ def install(platform: str = "claude", *, project: bool = False, project_dir: Pat
     cfg = _PLATFORM_CONFIG[platform]
     project_dir = project_dir or Path(".")
     skill_dst = _copy_skill_file(platform, project=project, project_dir=project_dir)
+    if platform == "codex":
+        _remove_legacy_codex_skill(project=project, project_dir=project_dir)
 
     if platform == "kilo":
         # Kilo Code also supports a native /graphify command file.
@@ -725,26 +768,36 @@ def install(platform: str = "claude", *, project: bool = False, project_dir: Pat
     if platform == "opencode":
         _install_opencode_plugin(project_dir if project else Path("."))
 
+    if platform == "codex":
+        # Happy path: skill in ~/.codex/skills/dreamliner plus AGENTS.md + hook.
+        _agents_install(project_dir, "codex", project=project)
+
     if project:
         _print_project_git_add_hint([_project_scope_root(skill_dst, project_dir)])
 
     print()
-    print("Done. Open your AI coding assistant and type:")
+    print(f"Done. Open Codex and type:")
     print()
-    print("  /graphify .")
+    print(f"  {_INVOKE} .")
     print()
-    print("Prefer a hosted version? Early access to the graphify platform is")
-    print("open free before the public v1 launch: https://app.graphify.com")
-    print()
+    if platform == "codex":
+        from graphify.doctor import warn_codex_unready
+        warn_codex_unready(require_cli=True)
 def _print_install_usage() -> None:
-    platforms = ", ".join([*_PLATFORM_CONFIG, "gemini", "cursor"])
-    print("Usage: graphify install [--project] [--strict] [--platform P|P]")
-    print(f"Platforms: {platforms}")
-    print("  --strict  block the first raw file read per session until one "
-          "`graphify query` runs (Claude Code project hook only; needs --project)")
+    print(f"Usage: {_CLI} install [--project] [--platform codex]")
+    print("Dreamliner is Codex-only. The default (and only first-class) host is Codex.")
+    print("  --project   install the skill + AGENTS.md into the current repository")
+    print("  --platform  accepted value: codex (default)")
+    print()
+    print("Also valid:  dreamliner install")
+    print("             dreamliner codex install")
+    print()
+    print("Other hosts (Claude Code, Cursor, Gemini, …) are not first-class on this")
+    print("variant. The CLI will refuse those installers with an actionable error.")
 _CLAUDE_MD_MARKER = "## graphify"
 _CODEBUDDY_MD_MARKER = "## graphify"
-_AGENTS_MD_MARKER = "## graphify"
+_AGENTS_MD_MARKER = "## Dreamliner"
+_LEGACY_AGENTS_MD_MARKER = "## graphify"
 _GEMINI_MD_MARKER = "## graphify"
 def _gemini_hook(project: bool = False) -> dict:
     """Gemini CLI BeforeTool hook, resolved to a shell-agnostic `graphify` call.
@@ -841,7 +894,7 @@ def _install_gemini_hook(project_dir: Path, project: bool = False) -> None:
     if not isinstance(before_tool, list):
         _refuse_to_modify(settings_path)
     hooks["BeforeTool"] = [
-        h for h in before_tool if "graphify" not in str(h)
+        h for h in before_tool if not _is_ours_hook_entry(h)
     ]
     hooks["BeforeTool"].append(_gemini_hook(project=project))
     _write_settings_with_backup(settings_path, settings)
@@ -855,7 +908,7 @@ def _uninstall_gemini_hook(project_dir: Path) -> None:
     except json.JSONDecodeError:
         return
     before_tool = settings.get("hooks", {}).get("BeforeTool", [])
-    filtered = [h for h in before_tool if "graphify" not in str(h)]
+    filtered = [h for h in before_tool if not _is_ours_hook_entry(h)]
     if len(filtered) == len(before_tool):
         return
     settings["hooks"]["BeforeTool"] = filtered
@@ -1483,17 +1536,25 @@ def _resolve_graphify_exe(project: bool = False) -> str:
     """
     import shutil
     if project:
-        return "graphify"
-    found = shutil.which("graphify")
+        return _CLI
+    found = shutil.which("dreamliner") or shutil.which("graphify")
     if not found:
         # Derive from sys.executable: same Scripts/ (Windows) or bin/ (Unix) dir
         scripts_dir = Path(sys.executable).parent
-        for name in ("graphify.exe", "graphify"):
+        for name in ("dreamliner.exe", "dreamliner", "graphify.exe", "graphify"):
             candidate = scripts_dir / name
             if candidate.exists():
                 found = str(candidate)
                 break
-    return (found or "graphify").replace("\\", "/")
+    return (found or _CLI).replace("\\", "/")
+
+
+def _is_ours_hook_entry(entry) -> bool:
+    """True if a hook payload belongs to Graphify or Dreamliner."""
+    s = str(entry).lower()
+    return "graphify" in s or "dreamliner" in s
+
+
 def _install_codex_hook(project_dir: Path, project: bool = False) -> None:
     """Add graphify PreToolUse hook to .codex/hooks.json.
 
@@ -1523,7 +1584,7 @@ def _install_codex_hook(project_dir: Path, project: bool = False) -> None:
     pre_tool = hooks.setdefault("PreToolUse", [])
     if not isinstance(pre_tool, list):
         _refuse_to_modify(hooks_path)
-    hooks["PreToolUse"] = [h for h in pre_tool if "graphify" not in str(h)]
+    hooks["PreToolUse"] = [h for h in pre_tool if not _is_ours_hook_entry(h)]
     hooks["PreToolUse"].extend(hook_entry["hooks"]["PreToolUse"])
     _write_settings_with_backup(hooks_path, existing)
     print(
@@ -1543,16 +1604,20 @@ def _uninstall_codex_hook(project_dir: Path) -> None:
     except json.JSONDecodeError:
         return
     pre_tool = existing.get("hooks", {}).get("PreToolUse", [])
-    filtered = [h for h in pre_tool if "graphify" not in str(h)]
+    filtered = [h for h in pre_tool if not _is_ours_hook_entry(h)]
     existing["hooks"]["PreToolUse"] = filtered
     hooks_path.write_text(json.dumps(existing, indent=2), encoding="utf-8")
     print(f"  .codex/hooks.json  ->  PreToolUse hook removed")
 def _agents_install(project_dir: Path, platform: str, project: bool = False) -> None:
-    """Write the graphify section to the local AGENTS.md for always-on platforms."""
+    """Write the Dreamliner section to the local AGENTS.md for always-on platforms."""
     target = (project_dir or Path(".")) / "AGENTS.md"
 
     if target.exists():
         content = target.read_text(encoding="utf-8")
+        # Drop a leftover Graphify heading so upgrades don't leave two blocks.
+        stripped = _remove_marker_section(content, _LEGACY_AGENTS_MD_MARKER)
+        if stripped is not None:
+            content = stripped
         new_content = _replace_or_append_section(
             content, _AGENTS_MD_MARKER, _always_on("agents-md")
         )
@@ -1560,10 +1625,10 @@ def _agents_install(project_dir: Path, platform: str, project: bool = False) -> 
         new_content = _always_on("agents-md")
 
     if target.exists() and new_content == target.read_text(encoding="utf-8"):
-        print(f"graphify already configured in {target.resolve()} (no change)")
+        print(f"{_PRODUCT} already configured in {target.resolve()} (no change)")
     else:
         target.write_text(new_content, encoding="utf-8")
-        print(f"graphify section written to {target.resolve()}")
+        print(f"{_PRODUCT} section written to {target.resolve()}")
 
     if platform == "codex":
         _install_codex_hook(project_dir or Path("."), project=project)
@@ -1574,15 +1639,13 @@ def _agents_install(project_dir: Path, platform: str, project: bool = False) -> 
 
     print()
     print(
-        f"{platform.capitalize()} will now check the knowledge graph before answering"
+        f"{_PRODUCT} will now check the knowledge graph before answering"
     )
     print("codebase questions and rebuild it after code changes.")
-    if platform not in ("codex", "opencode", "kilo"):
+    if platform == "codex":
         print()
-        print("Note: unlike Claude Code, there is no PreToolUse hook equivalent for")
-        print(
-            f"{platform.capitalize()} — the AGENTS.md rules are the always-on mechanism."
-        )
+        print("Codex always-on is AGENTS.md. The PreToolUse hook is an intentional")
+        print("no-op (Codex Desktop rejects additionalContext on PreToolUse).")
 def _amp_legacy_cleanup() -> None:
     """Best-effort removal of the pre-fix ~/.amp/skills/graphify install dir.
 
@@ -1713,7 +1776,7 @@ def _project_uninstall_all(project_dir: Path | None = None) -> None:
         _project_uninstall(platform_name, project_dir)
     print("\nDone.")
 def _agents_uninstall(project_dir: Path, platform: str = "") -> None:
-    """Remove the graphify section from the local AGENTS.md."""
+    """Remove the Dreamliner (and leftover Graphify) section from AGENTS.md."""
     target = (project_dir or Path(".")) / "AGENTS.md"
 
     if not target.exists():
@@ -1727,7 +1790,9 @@ def _agents_uninstall(project_dir: Path, platform: str = "") -> None:
     content = target.read_text(encoding="utf-8")
     cleaned = _remove_marker_section(content, _AGENTS_MD_MARKER)
     if cleaned is None:
-        print("graphify section not found in AGENTS.md - nothing to do")
+        cleaned = _remove_marker_section(content, _LEGACY_AGENTS_MD_MARKER)
+    if cleaned is None:
+        print(f"{_PRODUCT} section not found in AGENTS.md - nothing to do")
         if platform == "opencode":
             _uninstall_opencode_plugin(project_dir or Path("."))
         elif platform == "kilo":
@@ -1736,7 +1801,7 @@ def _agents_uninstall(project_dir: Path, platform: str = "") -> None:
 
     if cleaned:
         target.write_text(cleaned + "\n", encoding="utf-8")
-        print(f"graphify section removed from {target.resolve()}")
+        print(f"{_PRODUCT} section removed from {target.resolve()}")
     else:
         target.unlink()
         print(f"AGENTS.md was empty after removal - deleted {target.resolve()}")
@@ -1829,7 +1894,7 @@ def _install_claude_hook(project_dir: Path, strict: bool = False, project: bool 
     if not isinstance(pre_tool, list):
         _refuse_to_modify(settings_path)
 
-    hooks["PreToolUse"] = [h for h in pre_tool if not (isinstance(h, dict) and h.get("matcher") in ("Glob|Grep", "Bash", "Bash|Grep", "Read|Glob") and "graphify" in str(h))]
+    hooks["PreToolUse"] = [h for h in pre_tool if not (isinstance(h, dict) and h.get("matcher") in ("Glob|Grep", "Bash", "Bash|Grep", "Read|Glob") and _is_ours_hook_entry(h))]
     hooks["PreToolUse"].extend(_claude_pretooluse_hooks(strict=strict, project=project))
     _write_settings_with_backup(settings_path, settings)
     _mode = " (strict)" if strict else ""
@@ -1853,7 +1918,7 @@ def _strip_graphify_hook(settings_path: Path) -> None:
     except json.JSONDecodeError:
         return
     pre_tool = settings.get("hooks", {}).get("PreToolUse", [])
-    filtered = [h for h in pre_tool if not (h.get("matcher") in ("Glob|Grep", "Bash", "Bash|Grep", "Read|Glob") and "graphify" in str(h))]
+    filtered = [h for h in pre_tool if not (h.get("matcher") in ("Glob|Grep", "Bash", "Bash|Grep", "Read|Glob") and _is_ours_hook_entry(h))]
     if len(filtered) == len(pre_tool):
         return
     settings["hooks"]["PreToolUse"] = filtered
@@ -2011,7 +2076,7 @@ def _install_codebuddy_hook(project_dir: Path) -> None:
     if not isinstance(pre_tool, list):
         _refuse_to_modify(settings_path)
 
-    hooks["PreToolUse"] = [h for h in pre_tool if not (isinstance(h, dict) and h.get("matcher") in ("Glob|Grep", "Bash", "Bash|Grep", "Read|Glob") and "graphify" in str(h))]
+    hooks["PreToolUse"] = [h for h in pre_tool if not (isinstance(h, dict) and h.get("matcher") in ("Glob|Grep", "Bash", "Bash|Grep", "Read|Glob") and _is_ours_hook_entry(h))]
     hooks["PreToolUse"].extend(_claude_pretooluse_hooks())
     _write_settings_with_backup(settings_path, settings)
     print(f"  .codebuddy/settings.json  ->  PreToolUse hooks registered")
@@ -2025,7 +2090,7 @@ def _uninstall_codebuddy_hook(project_dir: Path) -> None:
     except json.JSONDecodeError:
         return
     pre_tool = settings.get("hooks", {}).get("PreToolUse", [])
-    filtered = [h for h in pre_tool if not (h.get("matcher") in ("Glob|Grep", "Bash", "Bash|Grep", "Read|Glob") and "graphify" in str(h))]
+    filtered = [h for h in pre_tool if not (h.get("matcher") in ("Glob|Grep", "Bash", "Bash|Grep", "Read|Glob") and _is_ours_hook_entry(h))]
     if len(filtered) == len(pre_tool):
         return
     settings["hooks"]["PreToolUse"] = filtered
@@ -2097,17 +2162,46 @@ _CLI_INSTALL_COMMANDS = frozenset({
 })
 
 
+def _reject_legacy_host(name: str) -> "NoReturn":
+    """Refuse a non-Codex host on the Dreamliner CLI surface."""
+    print(
+        f"error: {_PRODUCT} is Codex-only. '{name}' is not a first-class host "
+        f"on this variant.\n"
+        f"Install with:\n"
+        f"    {_CLI} install\n"
+        f"    {_CLI} install --platform codex\n"
+        f"    {_CLI} codex install\n"
+        f"Then open Codex and type `{_INVOKE} .`.",
+        file=sys.stderr,
+    )
+    sys.exit(1)
+
+
+def _ensure_dreamliner_platform(name: str | None) -> str:
+    """Canonicalize a CLI platform and reject anything but Codex."""
+    if not name:
+        return "codex"
+    canon = _canonical_platform(name)
+    if canon not in FIRST_CLASS_PLATFORMS:
+        _reject_legacy_host(name)
+    return canon
+
+
 def dispatch_install_cli(cmd: str) -> bool:
-    """Handle `graphify <install-command>` dispatch (install/uninstall + every
-    per-platform install target). Returns True if cmd was an install command and
-    was handled, False otherwise so the caller can continue its own dispatch.
-    Moved verbatim from __main__.main().
+    """Handle `dreamliner <install-command>` dispatch.
+
+    Codex is the only first-class host. Historical per-platform commands stay
+    recognized so we can print a clear error instead of falling through to
+    extract-as-path. Returns True if cmd was an install command and was
+    handled, False otherwise so the caller can continue its own dispatch.
     """
     if cmd not in _CLI_INSTALL_COMMANDS:
         return False
+    if cmd not in ("install", "uninstall", "codex") and cmd in _CLI_INSTALL_COMMANDS:
+        _reject_legacy_host(cmd)
     if cmd == "install":
-        # Default to windows platform on Windows, claude elsewhere
-        default_platform = "windows" if platform.system() == "Windows" else "claude"
+        # Dreamliner is Codex-only. Windows no longer switches to Claude.
+        default_platform = "codex"
         selected_platform: str | None = None
         project_scope = False
         strict = False
@@ -2150,14 +2244,14 @@ def dispatch_install_cli(cmd: str) -> bool:
                     sys.exit(1)
                 selected_platform = arg
                 i += 1
-        chosen_platform = selected_platform or default_platform
+        chosen_platform = _ensure_dreamliner_platform(selected_platform or default_platform)
         if project_scope:
             _project_install(chosen_platform, Path("."), strict=strict)
         else:
             if strict:
                 print(
-                    "note: --strict applies to the project PreToolUse hook; run "
-                    "`graphify install --project --strict` or `graphify claude install --strict`.",
+                    f"note: --strict is a Claude Code hook flag and is not used on "
+                    f"{_PRODUCT}. Codex always-on is AGENTS.md.",
                     file=sys.stderr,
                 )
             install(platform=chosen_platform)
@@ -2345,6 +2439,8 @@ def dispatch_install_cli(cmd: str) -> bool:
         if subcmd == "install":
             if "--project" in sys.argv[3:]:
                 _project_install(cmd, Path("."))
+            elif cmd == "codex":
+                install(platform="codex")
             else:
                 _agents_install(Path("."), cmd)
         elif subcmd == "uninstall":

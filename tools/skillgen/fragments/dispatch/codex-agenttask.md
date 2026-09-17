@@ -2,7 +2,9 @@
 
 > **Codex platform:** Uses `spawn_agent` + `wait_agent` + `close_agent` instead of the Agent tool.
 > Requires `multi_agent = true` under `[features]` in `~/.codex/config.toml`.
-> If `spawn_agent` is unavailable, tell the user to add that config and restart Codex.
+> If `spawn_agent` is unavailable, or `dreamliner doctor` reports a Codex config
+> problem, tell the user to add that config and restart Codex — do not dump a
+> traceback. If the `codex` CLI is missing, tell them to install Codex first.
 
 Call `spawn_agent` once per chunk — ALL in the same response so they run in parallel. Build the message by wrapping the extraction prompt in task-delegation framing:
 

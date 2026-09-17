@@ -502,16 +502,15 @@ def test_amp_user_install_carries_references(tmp_path, monkeypatch):
     project.mkdir()
     monkeypatch.chdir(project)
     with patch("graphify.__main__.Path.home", return_value=home):
-        monkeypatch.setattr(sys, "argv", ["graphify", "amp", "install"])
-        main()
+        from graphify.__main__ import _amp_install, _amp_uninstall
+        _amp_install(project)
         skill_dir = home / ".config" / "agents" / "skills" / "graphify"
         assert (skill_dir / "SKILL.md").exists()
         # A representative reference from the shipped amp bundle lands too.
         assert (skill_dir / "references" / "exports.md").exists()
         assert (skill_dir / "references" / "hooks.md").exists()
 
-        monkeypatch.setattr(sys, "argv", ["graphify", "amp", "uninstall"])
-        main()
+        _amp_uninstall(project)
 
     assert not skill_dir.exists()
 

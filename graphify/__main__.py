@@ -1,4 +1,4 @@
-"""graphify CLI - `graphify install` sets up the Claude Code skill."""
+"""Dreamliner CLI — `dreamliner install` sets up the Codex skill."""
 
 from __future__ import annotations
 import errno
@@ -22,6 +22,9 @@ except Exception:
 # Accepts a relative name ("graphify-out-feature") or an absolute path ("/shared/graphify-out").
 # Defined once in graphify.paths so the security/callflow path guards honour the
 # same override (#1423).
+from graphify.brand import CLI as _CLI
+from graphify.brand import INVOKE as _INVOKE
+from graphify.brand import PRODUCT as _PRODUCT
 from graphify.paths import GRAPHIFY_OUT as _GRAPHIFY_OUT
 
 # Install/uninstall subsystem moved to graphify/install.py; re-exported here so
@@ -191,7 +194,7 @@ def _check_skill_version(skill_dst: Path, platform_names: "list[str] | None" = N
     except OSError:
         return
     if not skill_exists:
-        print("  warning: skill dir exists but SKILL.md is missing. Run 'graphify install' to repair.", file=sys.stderr)
+        print(f"  warning: skill dir exists but SKILL.md is missing. Run '{_CLI} install' to repair.", file=sys.stderr)
         return
     # A progressive SKILL.md links to its references/ sidecar. If the body points
     # at references/ but the dir is gone (manual delete, partial upgrade), the
@@ -201,7 +204,7 @@ def _check_skill_version(skill_dst: Path, platform_names: "list[str] | None" = N
     except OSError:
         body = ""
     if "references/" in body and not (skill_dst.parent / "references").exists():
-        print("  warning: skill references/ sidecar is missing. Run 'graphify install' to repair.", file=sys.stderr)
+        print(f"  warning: skill references/ sidecar is missing. Run '{_CLI} install' to repair.", file=sys.stderr)
     try:
         installed = version_file.read_text(encoding="utf-8").strip()
     except OSError:
@@ -214,21 +217,21 @@ def _check_skill_version(skill_dst: Path, platform_names: "list[str] | None" = N
             # skill. The real fix is to upgrade the package (#1568). Common for a stale
             # `uv tool` CLI, or a contributor whose dev checkout stamped a newer skill.
             print(
-                f"  warning: skill is from graphify {installed}, but the package is "
+                f"  warning: skill is from {_PRODUCT} {installed}, but the package is "
                 f"{__version__} (older). Upgrade the package "
                 f"(e.g. 'uv tool upgrade graphifyy' or 'pip install -U graphifyy'); "
-                f"running 'graphify install' would downgrade the skill.",
+                f"running '{_CLI} install' would downgrade the skill.",
                 file=sys.stderr,
             )
         else:
             _cmd = (
-                f"graphify install --platform {platform_names[0]}"
-                if platform_names else "graphify install"
+                f"{_CLI} install --platform {platform_names[0]}"
+                if platform_names else f"{_CLI} install"
             )
             print(
-                f"  warning: skill at {skill_dst.parent} is from graphify {installed}, "
+                f"  warning: skill at {skill_dst.parent} is from {_PRODUCT} {installed}, "
                 f"package is {__version__}. Run '{_cmd}' to update it "
-                f"(a plain 'graphify install' refreshes only the detected platform).",
+                f"(a plain '{_CLI} install' refreshes only the Codex skill).",
                 file=sys.stderr,
             )
 
@@ -526,15 +529,20 @@ def _run_cli() -> None:
             _check_skill_version(skill_dst)
 
     if len(sys.argv) >= 2 and sys.argv[1] in ("-v", "--version", "version"):
-        print(f"graphify {__version__}")
+        print(f"{_PRODUCT} {__version__} ({_CLI})")
         return
 
     if len(sys.argv) < 2 or sys.argv[1] in ("-h", "--help", "-?"):
-        print("Usage: graphify <command>")
+        print(f"Usage: {_CLI} <command>")
+        print()
+        print(f"{_PRODUCT} is the Codex-only rebrand of Graphify.")
+        print(f"Invoke in Codex with `{_INVOKE}`. Validation still uses")
+        print("graphify.validate.validate_extraction / assert_valid.")
         print()
         print("Commands:")
-        print("  install [--platform P]  copy skill to platform config dir (claude|windows|codebuddy|codex|opencode|aider|amp|agents|claw|droid|trae|trae-cn|gemini|cursor|antigravity|hermes|kiro|pi|devin)")
-        print("  uninstall               remove graphify from all detected platforms in one shot")
+        print("  install [--platform codex]  copy the Dreamliner skill to ~/.codex/skills/dreamliner")
+        print("                              and write the always-on AGENTS.md block (Codex only)")
+        print("  uninstall                   remove Dreamliner from Codex (and leftover host copies)")
         print("    --purge                 also delete graphify-out/ directory")
         print("  path \"A\" \"B\"            shortest path between two nodes in graph.json")
         print("    --graph <path>          path to graph.json (default graphify-out/graph.json)")
@@ -550,7 +558,7 @@ def _run_cli() -> None:
         print("                            (default follows JSON directed flag;")
         print("                             raw extraction with no flag defaults directed)")
         print("    --extract-path PATH     extractor source for suppression scan")
-        print("  clone <github-url>      clone a GitHub repo locally and print its path for /graphify")
+        print(f"  clone <github-url>      clone a GitHub repo locally and print its path for {_INVOKE}")
         print("  merge-driver <base> <current> <other>  git merge driver: union-merge two graph.json files (set up via hook install)")
         print("  merge-graphs <g1> <g2>  merge two or more graph.json files into one cross-repo graph")
         print("    --out <path>            output path (default: graphify-out/merged-graph.json)")
@@ -664,73 +672,18 @@ def _run_cli() -> None:
         print("                          (or set NEO4J_PASSWORD instead of --password to keep it off argv)")
         print("  export falkordb         emit Cypher or push to FalkorDB [--graph PATH] [--push URI] [--user U] [--password P]")
         print("                          (or set FALKORDB_PASSWORD instead of --password to keep it off argv)")
-        print("  hook install            install post-commit/post-checkout git hooks (all platforms)")
+        print("  hook install            install post-commit/post-checkout git hooks")
         print("  hook uninstall          remove git hooks")
         print("  hook status             check if git hooks are installed")
-        print(
-            "  gemini install          write GEMINI.md section + BeforeTool hook (Gemini CLI)"
-        )
-        print("  gemini uninstall        remove GEMINI.md section + BeforeTool hook")
-        print("  cursor install          write .cursor/rules/graphify.mdc (Cursor)")
-        print("  cursor uninstall        remove .cursor/rules/graphify.mdc")
-        print("  claude install          write graphify section to CLAUDE.md + PreToolUse hook (Claude Code)")
-        print("  claude uninstall        remove graphify section from CLAUDE.md + PreToolUse hook")
-        print("  codebuddy install       write graphify section to CODEBUDDY.md + PreToolUse hook (CodeBuddy)")
-        print("  codebuddy uninstall     remove graphify section from CODEBUDDY.md + PreToolUse hook")
-        print("  codex install           write graphify section to AGENTS.md (Codex)")
-        print("  codex uninstall         remove graphify section from AGENTS.md")
-        print(
-            "  opencode install        write graphify section to AGENTS.md + tool.execute.before plugin (OpenCode)"
-        )
-        print(
-            "  opencode uninstall      remove graphify section from AGENTS.md + plugin"
-        )
-        print(
-            "  kilo install            install native Kilo skill + command + AGENTS.md + .kilo plugin"
-        )
-        print(
-            "  kilo uninstall          remove native Kilo skill + command + AGENTS.md + .kilo plugin"
-        )
-        print("  aider install           write graphify section to AGENTS.md (Aider)")
-        print("  aider uninstall         remove graphify section from AGENTS.md")
-        print(
-            "  copilot install         copy graphify skill to ~/.copilot/skills (GitHub Copilot CLI)"
-        )
-        print("  copilot uninstall       remove graphify skill from ~/.copilot/skills")
-        print(
-            "  vscode install          configure VS Code Copilot Chat (skill + .github/copilot-instructions.md)"
-        )
-        print("  vscode uninstall        remove VS Code Copilot Chat configuration")
-        print(
-            "  claw install            write graphify section to AGENTS.md (OpenClaw)"
-        )
-        print("  claw uninstall          remove graphify section from AGENTS.md")
-        print(
-            "  droid install           write graphify section to AGENTS.md (Factory Droid)"
-        )
-        print("  droid uninstall        remove graphify section from AGENTS.md")
-        print("  trae install            write graphify section to AGENTS.md (Trae)")
-        print("  trae uninstall         remove graphify section from AGENTS.md")
-        print("  trae-cn install         write graphify section to AGENTS.md (Trae CN)")
-        print("  trae-cn uninstall      remove graphify section from AGENTS.md")
-        print(
-            "  antigravity install     write .agents/rules + .agents/workflows + skill (Google Antigravity)"
-        )
-        print(
-            "  antigravity uninstall   remove .agents/rules, .agents/workflows, and skill"
-        )
-        print(
-            "  hermes install          write skill to ~/.hermes/skills/graphify/ (Hermes)"
-        )
-        print("  hermes uninstall        remove skill from ~/.hermes/skills/graphify/")
-        print(
-            "  kiro install            write skill to .kiro/skills/graphify/ + steering file (Kiro IDE/CLI)"
-        )
-        print("  kiro uninstall          remove skill + steering file")
-        print("  pi install              write skill to ~/.pi/agent/skills/graphify/ (Pi coding agent)")
-        print("  pi uninstall            remove skill from ~/.pi/agent/skills/graphify/")
-        print("  devin install           write skill to ~/.config/devin/skills/graphify/ (Devin CLI)")
-        print("  devin uninstall         remove skill from ~/.config/devin/skills/graphify/")
+        print("  validate [file]         Dreamliner validation: run validate_extraction / assert_valid")
+        print("                            on extraction or graph JSON (default graphify-out/graph.json)")
+        print("  doctor                  check Codex CLI + ~/.codex/config.toml + graph health")
+        print("  codex install           write Dreamliner section to AGENTS.md + Codex skill (same as install)")
+        print("  codex uninstall         remove Dreamliner section from AGENTS.md + Codex skill")
+        print()
+        print("Claude Code / Cursor / Gemini and other multi-host installers are not")
+        print(f"first-class on {_PRODUCT}. `{_CLI} claude install` (etc.) exits with a")
+        print(f"clear error. Use `{_CLI} install` or `{_CLI} codex install`.")
         print()
         return
 
@@ -743,7 +696,7 @@ def _run_cli() -> None:
     # "install"/"uninstall" which have their own per-subcommand help handlers.
     _FREE_TEXT_CMDS = {"query", "explain", "path", "save-result", "install", "uninstall"}
     if cmd not in _FREE_TEXT_CMDS and any(a in {"-h", "--help", "-?"} for a in sys.argv[2:]):
-        print(f"Run 'graphify --help' for full usage.")
+        print(f"Run '{_CLI} --help' for full usage.")
         return
 
     if dispatch_install_cli(cmd):

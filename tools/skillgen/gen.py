@@ -100,17 +100,53 @@ ALWAYS_ON_BLOCKS = {
 # still fails the guard, so unrelated drift cannot slip through. Each entry is a
 # one-time, audited edit to the otherwise-immutable v8 baseline.
 ALWAYS_ON_SANCTIONED_EDITS: dict[str, tuple[tuple[str, str], ...]] = {
-    # #1530: install guidance must stay host-generic — do not tell agents to
-    # invoke a literal `skill` tool with `skill: "graphify"`, which is
-    # host-specific and not valid in every environment.
+    # Dreamliner Codex-only rebrand: AGENTS.md always-on is the product surface.
     "_AGENTS_MD_SECTION": (
         (
+            "## graphify\n"
+            "\n"
+            "This project has a knowledge graph at graphify-out/ with god nodes, community structure, and cross-file relationships.\n"
+            "\n"
             "When the user types `/graphify`, invoke the `skill` tool with "
-            '`skill: "graphify"` before doing anything else.',
-            "When the user types `/graphify`, use the installed graphify skill or instructions "
-            "before doing anything else.",
+            '`skill: "graphify"` before doing anything else.\n'
+            "\n"
+            "Rules:\n"
+            '- For codebase questions, first run `graphify query "<question>"` when graphify-out/graph.json exists. Use `graphify path "<A>" "<B>"` for relationships and `graphify explain "<concept>"` for focused concepts. These return a scoped subgraph, usually much smaller than GRAPH_REPORT.md or raw grep output.\n'
+            "- Dirty graphify-out/ files are expected after hooks or incremental updates; dirty graph files are not a reason to skip graphify. Only skip graphify if the task is about stale or incorrect graph output, or the user explicitly says not to use it.\n"
+            "- If graphify-out/wiki/index.md exists, use it for broad navigation instead of raw source browsing.\n"
+            "- Read graphify-out/GRAPH_REPORT.md only for broad architecture review or when query/path/explain do not surface enough context.\n"
+            "- After modifying code, run `graphify update .` to keep the graph current (AST-only, no API cost).\n",
+            "## Dreamliner\n"
+            "\n"
+            "This project has a Dreamliner knowledge graph at graphify-out/ with god nodes, community structure, and cross-file relationships.\n"
+            "\n"
+            "When the user types `$dreamliner`, use the installed Dreamliner skill or instructions before doing anything else.\n"
+            "\n"
+            "Rules:\n"
+            '- For codebase questions, first run `dreamliner query "<question>"` when graphify-out/graph.json exists. Use `dreamliner path "<A>" "<B>"` for relationships and `dreamliner explain "<concept>"` for focused concepts. These return a scoped subgraph, usually much smaller than GRAPH_REPORT.md or raw grep output.\n'
+            "- Dirty graphify-out/ files are expected after hooks or incremental updates; dirty graph files are not a reason to skip Dreamliner. Only skip Dreamliner if the task is about stale or incorrect graph output, or the user explicitly says not to use it.\n"
+            "- If graphify-out/wiki/index.md exists, use it for broad navigation instead of raw source browsing.\n"
+            "- Read graphify-out/GRAPH_REPORT.md only for broad architecture review or when query/path/explain do not surface enough context.\n"
+            "- After modifying code, run `dreamliner update .` to keep the graph current (AST-only, no API cost).\n",
         ),
     ),
+}
+
+# v8 headings that the Codex Dreamliner rebrand renames. audit-coverage treats
+# the new heading as covering the old one so the rename is not a content drop.
+_HEADING_ALIASES: dict[str, str] = {
+    "# /graphify": "# $dreamliner",
+    "## What graphify is for": "## What Dreamliner is for",
+    "## For /graphify query": "## For $dreamliner query",
+    "## For /graphify path": "## For $dreamliner path",
+    "## For /graphify explain": "## For $dreamliner explain",
+    "## For /graphify add": "## For $dreamliner add and --watch",
+    "## For /graphify add and --watch": "## For $dreamliner add and --watch",
+    "### Step 1 - Ensure graphify is installed": "### Step 1 - Ensure Dreamliner is installed",
+    "## For the commit hook and native CLAUDE.md integration":
+        "## For the commit hook and native AGENTS.md integration",
+    "## For native CLAUDE.md integration":
+        "## For native AGENTS.md integration (Codex / Dreamliner)",
 }
 
 # The full six-value file_type enum (Decision A). Every rendered platform — split
@@ -189,6 +225,18 @@ _AGENTS_MD_HOOKS: dict[str, dict[str, str]] = {
         "install_block": "graphify agents install",
         "uninstall_block": "graphify agents uninstall  # remove the section",
         "pretooluse_note": "",
+    },
+    "codex": {
+        "heading_suffix": " (Codex / Dreamliner)",
+        "host_display": "Codex",
+        "install_block": "dreamliner install",
+        "uninstall_block": "dreamliner uninstall  # remove the section",
+        "pretooluse_note": (
+            "\n> **Note:** The Codex PreToolUse hook is an intentional no-op. "
+            "Codex Desktop rejects `hookSpecificOutput.additionalContext` on "
+            "PreToolUse (it breaks Bash). Always-on guidance is AGENTS.md. "
+            "After code changes, run `$dreamliner update .`.\n"
+        ),
     },
 }
 # The prose file name the lean-core hooks pointer names, per hooks variant.
@@ -615,7 +663,92 @@ def render(platform: Platform) -> list[RenderedArtifact]:
             body = _read_fragment(references[name])
         rel = f"{platform.refs_dst}/{name}.md"
         artifacts.append(RenderedArtifact(rel, body))
+    if platform.key == "codex":
+        artifacts = [
+            RenderedArtifact(a.path, _dreamliner_rebrand_codex(a.content))
+            for a in artifacts
+        ]
     return artifacts
+
+
+def _dreamliner_rebrand_codex(text: str) -> str:
+    """User-facing Dreamliner branding for the Codex skill only.
+
+    Leaves internal import paths (`from graphify.`, `graphify-out/`,
+    `.graphify_*`, package name `graphifyy`) untouched so AST extraction and
+    on-disk graphs keep working.
+    """
+    gemini_tip = (
+        "> Tip: set `GEMINI_API_KEY` or `GOOGLE_API_KEY` to use Gemini for "
+        "semantic extraction (`pip install 'graphifyy[gemini]'`)."
+    )
+    dreamliner_tip = (
+        "> Tip: Dreamliner's happy path is Codex itself — no Gemini/Claude API "
+        "key. Code is AST-only. For docs/papers/images, Codex is the LLM "
+        "(spawn_agent). Optional Gemini remains an extra, not the default."
+    )
+    out = text.replace(gemini_tip, dreamliner_tip)
+    # Headings and invoke tokens first (longest / most specific).
+    replacements = (
+        ("# graphify reference:", "# Dreamliner reference:"),
+        ("# /graphify", "# $dreamliner"),
+        ("## For /graphify ", "## For $dreamliner "),
+        ("## What graphify is for", "## What Dreamliner is for"),
+        ("If the user invoked `/graphify --help`", "If the user invoked `$dreamliner --help`"),
+        ("If the user invoked `/graphify -h`", "If the user invoked `$dreamliner -h`"),
+        ("`/graphify", "`$dreamliner"),
+        ("`## For /graphify query`", "`## For $dreamliner query`"),
+        ("jump straight to `## For $dreamliner query`.** Run `graphify query`",
+         "jump straight to `## For $dreamliner query`.** Run `dreamliner query`"),
+        ("Run `/graphify query", "Run `$dreamliner query"),
+        ("the common `/graphify .`", "the common `$dreamliner .`"),
+        ("`graphify query", "`dreamliner query"),
+        ("`graphify path", "`dreamliner path"),
+        ("`graphify explain", "`dreamliner explain"),
+        ("`graphify update", "`dreamliner update"),
+        ("`graphify export", "`dreamliner export"),
+        ("`graphify extract", "`dreamliner extract"),
+        ("`graphify hook", "`dreamliner hook"),
+        ("`graphify cluster-only", "`dreamliner cluster-only"),
+        ("`graphify add", "`dreamliner add"),
+        ("graphify claude install", "dreamliner install"),
+        ("graphify codex install", "dreamliner install"),
+        ("graphify install", "dreamliner install"),
+        ("graphify uninstall", "dreamliner uninstall"),
+        ("graphify hook ", "dreamliner hook "),
+        ("## graphify` section", "## Dreamliner` section"),
+        ("make graphify always-on", "make Dreamliner always-on"),
+        ("wire graphify into", "wire Dreamliner into"),
+        ("If a post-commit hook already exists, graphify appends",
+         "If a post-commit hook already exists, Dreamliner appends"),
+        ("Drop any folder of code, docs, papers, images, or video into graphify",
+         "Drop any folder of code, docs, papers, images, or video into Dreamliner"),
+        ("What graphify is for", "What Dreamliner is for"),
+        ("## For the commit hook and native CLAUDE.md integration",
+         "## For the commit hook and native AGENTS.md integration"),
+        ("wire graphify into a project's CLAUDE.md",
+         "wire Dreamliner into a project's AGENTS.md"),
+        ("GRAPHIFY_BIN=$(which graphify 2>/dev/null)",
+         "GRAPHIFY_BIN=$(which dreamliner 2>/dev/null || which graphify 2>/dev/null)"),
+        ("# 2. Read shebang from graphify binary (pipx and direct pip installs)",
+         "# 2. Read shebang from dreamliner/graphify binary (pipx and direct pip installs)"),
+        ("If graphify saved you time, consider supporting it: https://github.com/sponsors/safishamsi",
+         "Dreamliner is a Codex-only fork of Graphify. Validation still runs via dreamliner validate."),
+        ("### Step 1 - Ensure graphify is installed",
+         "### Step 1 - Ensure Dreamliner is installed"),
+        ("### Step 4.5 - Graph health check (read-only integrity gate)",
+         "### Step 4.5 - Dreamliner validation (read-only integrity gate)"),
+        ("A non-destructive diagnostic on the extraction, before labeling.",
+         "Dreamliner validation: a non-destructive diagnostic on the extraction, before labeling. "
+         "Schema checks (`validate_extraction` / `assert_valid`) still run during build. "
+         "You can also run `dreamliner validate` on graph.json or extraction JSON."),
+    )
+    for old, new in replacements:
+        out = out.replace(old, new)
+    # Remaining invoke tokens (Usage table, skill prose). Do not touch
+    # graphify-out / import graphify / graphifyy / .graphify_*.
+    out = out.replace("/graphify", "$dreamliner")
+    return out
 
 
 def render_always_on() -> list[RenderedArtifact]:
@@ -809,10 +942,11 @@ def audit_coverage(platform: Platform) -> list[str]:
         if h in allowlist:
             continue
         homes = []
-        if h in core_headings:
+        aliases = {h, _HEADING_ALIASES.get(h, h)}
+        if core_headings & aliases:
             homes.append("core")
         for name, hs in ref_headings.items():
-            if h in hs:
+            if hs & aliases:
                 homes.append(f"references/{name}.md")
         if not homes:
             problems.append(f"v8 heading not covered anywhere: {h!r}")

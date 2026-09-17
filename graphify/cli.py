@@ -11,6 +11,9 @@ import os
 import re
 import sys
 import time
+from graphify.brand import CLI as _CLI
+from graphify.brand import PRODUCT as _PRODUCT
+from graphify.doctor import require_usable_graph, run_doctor
 from graphify.paths import GRAPHIFY_OUT as _GRAPHIFY_OUT
 from pathlib import Path, PurePosixPath, PureWindowsPath
 
@@ -1062,6 +1065,52 @@ def _reenter_main() -> None:
 
 
 def dispatch_command(cmd: str) -> None:
+    if cmd == "doctor":
+        graph = None
+        args = sys.argv[2:]
+        i = 0
+        while i < len(args):
+            if args[i] == "--graph" and i + 1 < len(args):
+                graph = Path(args[i + 1])
+                i += 2
+            elif args[i] in ("-h", "--help"):
+                print(f"Usage: {_CLI} doctor [--graph path]")
+                return
+            else:
+                i += 1
+        sys.exit(run_doctor(graph=graph))
+    elif cmd == "validate":
+        from graphify.validate import validate_extraction, assert_valid
+        target = Path(sys.argv[2]) if len(sys.argv) > 2 and not sys.argv[2].startswith("-") else Path(_GRAPHIFY_OUT) / "graph.json"
+        if not target.exists():
+            print(
+                f"{_PRODUCT}: nothing to validate at {target}.\n"
+                f"Build a graph first (`{_CLI} extract .` or `$dreamliner .`) "
+                f"or pass an extraction JSON path.",
+                file=sys.stderr,
+            )
+            sys.exit(1)
+        try:
+            data = json.loads(target.read_text(encoding="utf-8"))
+        except json.JSONDecodeError as exc:
+            print(
+                f"{_PRODUCT}: {target} is not valid JSON ({exc}).",
+                file=sys.stderr,
+            )
+            sys.exit(1)
+        errors = validate_extraction(data)
+        if errors:
+            try:
+                assert_valid(data)
+            except ValueError as exc:
+                print(f"{_PRODUCT} validation failed:\n{exc}", file=sys.stderr)
+                sys.exit(1)
+        print(
+            f"{_PRODUCT} validation OK: {target} "
+            f"({len(data.get('nodes', []))} nodes, "
+            f"{len(data.get('edges', data.get('links', [])))} edges)."
+        )
+        return
     if cmd == "provider":
         from graphify.llm import _custom_providers_path, BACKENDS
         import json as _json
@@ -1201,7 +1250,7 @@ def dispatch_command(cmd: str) -> None:
             sys.exit(1)
     elif cmd == "query":
         if len(sys.argv) < 3:
-            print("Usage: graphify query \"<question>\" [--dfs] [--context C] [--budget N] [--graph path]", file=sys.stderr)
+            print(f"Usage: {_CLI} query \"<question>\" [--dfs] [--context C] [--budget N] [--graph path]", file=sys.stderr)
             sys.exit(1)
         from graphify.serve import _query_graph_text
         from graphify.security import sanitize_label
@@ -1242,9 +1291,6 @@ def dispatch_command(cmd: str) -> None:
             else:
                 i += 1
         gp = Path(graph_path).resolve()
-        if not gp.exists():
-            print(f"error: graph file not found: {gp}", file=sys.stderr)
-            sys.exit(1)
         if not gp.suffix == ".json":
             print(f"error: graph file must be a .json file", file=sys.stderr)
             sys.exit(1)
@@ -1253,7 +1299,7 @@ def dispatch_command(cmd: str) -> None:
             import json as _json
             import networkx as _nx
 
-            _raw = _json.loads(gp.read_text(encoding="utf-8"))
+            _raw = require_usable_graph(gp)
             if "links" not in _raw and "edges" in _raw:
                 _raw = dict(_raw, links=_raw["edges"])
             # `query` deliberately keeps the graph undirected (unlike `path` /
@@ -1440,16 +1486,14 @@ def dispatch_command(cmd: str) -> None:
             else:
                 i += 1
         gp = Path(graph_path).resolve()
-        if not gp.exists():
-            print(f"error: graph file not found: {gp}", file=sys.stderr)
-            sys.exit(1)
         if not gp.suffix == ".json":
             print("error: graph file must be a .json file", file=sys.stderr)
             sys.exit(1)
+        require_usable_graph(gp)
         try:
             G = load_graph(gp)
         except Exception as exc:
-            print(f"error: could not load graph: {exc}", file=sys.stderr)
+            print(f"{_PRODUCT}: could not load graph: {exc}", file=sys.stderr)
             sys.exit(1)
         gods = _god_nodes(G, top_n=top_n, exclude_hubs_percentile=gn_exclude_hubs)
         if as_json:
@@ -1587,11 +1631,8 @@ def dispatch_command(cmd: str) -> None:
         # canonicalized files), so respect it unless the caller opts out.
         undirected = direction_flag == "undirected"
         gp = Path(graph_path).resolve()
-        if not gp.exists():
-            print(f"error: graph file not found: {gp}", file=sys.stderr)
-            sys.exit(1)
         _enforce_graph_size_cap_or_exit(gp)
-        _raw = json.loads(gp.read_text(encoding="utf-8"))
+        _raw = require_usable_graph(gp)
         if "links" not in _raw and "edges" in _raw:
             _raw = dict(_raw, links=_raw["edges"])
         # Force directed so the renderer can recover stored caller→callee
@@ -1727,11 +1768,8 @@ def dispatch_command(cmd: str) -> None:
             if a == "--graph" and i + 1 < len(args):
                 graph_path = args[i + 1]
         gp = Path(graph_path).resolve()
-        if not gp.exists():
-            print(f"error: graph file not found: {gp}", file=sys.stderr)
-            sys.exit(1)
         _enforce_graph_size_cap_or_exit(gp)
-        _raw = json.loads(gp.read_text(encoding="utf-8"))
+        _raw = require_usable_graph(gp)
         if "links" not in _raw and "edges" in _raw:
             _raw = dict(_raw, links=_raw["edges"])
         # Force directed so the renderer can recover stored caller→callee direction.
@@ -4450,9 +4488,9 @@ def dispatch_command(cmd: str) -> None:
         stages.mark("build")
         if G.number_of_nodes() == 0:
             print(
-                "[graphify extract] graph is empty — extraction produced no nodes. "
-                "Possible causes: all files skipped, binary-only corpus, or LLM "
-                "returned no edges.",
+                f"[{_PRODUCT} extract] graph is empty — extraction produced no nodes. "
+                "Possible causes: all files skipped, binary-only corpus, or a failed "
+                "semantic pass. Rebuild with `$dreamliner .` or `dreamliner extract .`.",
                 file=sys.stderr,
             )
             sys.exit(1)

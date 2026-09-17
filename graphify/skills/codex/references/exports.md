@@ -1,4 +1,4 @@
-# graphify reference: extra exports and benchmark
+# Dreamliner reference: extra exports and benchmark
 
 Load this when the user passed one of the export flags (`--wiki`, `--neo4j`, `--neo4j-push`, `--falkordb`, `--falkordb-push`, `--svg`, `--graphml`, `--mcp`), or when the corpus is large enough for the token-reduction benchmark. Each step runs only for its own flag.
 
@@ -70,7 +70,7 @@ To configure in Claude Desktop, add to `claude_desktop_config.json`. Claude Desk
   "mcpServers": {
     "graphify": {
       "command": "<absolute path from: cat graphify-out/.graphify_python>",
-      "args": ["-m", "graphify.serve", "/absolute/path/to/graphify-out/graph.json"]
+      "args": ["-m", "graphify.serve", "/absolute/path/to$dreamliner-out/graph.json"]
     }
   }
 }

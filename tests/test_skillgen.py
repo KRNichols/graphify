@@ -274,10 +274,14 @@ def test_descriptions_are_unified():
     and none of the old wording may survive.
     """
     expected_line = f'description: "{UNIFIED_DESCRIPTION}"'
+    dreamliner_line = expected_line.replace("a graphify query first", "a Dreamliner query first")
     platforms = gen.load_platforms()
     for key, p in platforms.items():
         body = gen.render(p)[0].content
-        assert expected_line in body, f"[{key}] missing the unified description line"
+        if key == "codex":
+            assert dreamliner_line in body, f"[{key}] missing the Dreamliner description line"
+        else:
+            assert expected_line in body, f"[{key}] missing the unified description line"
         # None of the drifted v8 wording may survive on any platform.
         assert "Provides persistent graph with god nodes" not in body, f"[{key}] kept old wording"
         assert "treat the question as a /graphify query." not in body, f"[{key}] kept old wording"
@@ -349,8 +353,12 @@ def test_every_platform_query_has_expansion_and_fallback():
         q = refs["query.md"]
         assert "Constrained query expansion" in q
         assert "If the CLI is unavailable" in q
-        assert "## For /graphify path" in q
-        assert "## For /graphify explain" in q
+        if key == "codex":
+            assert "## For $dreamliner path" in q
+            assert "## For $dreamliner explain" in q
+        else:
+            assert "## For /graphify path" in q
+            assert "## For /graphify explain" in q
 
 
 # --- cross-shell parity for powershell hosts (#2528) ---------------------------
@@ -742,25 +750,21 @@ def test_always_on_roundtrip_is_byte_faithful():
         for a in gen.render_always_on()
         if a.path == "graphify/always_on/agents-md.md"
     )
-    old_instruction = (
-        "When the user types `/graphify`, invoke the `skill` tool with "
-        '`skill: "graphify"` before doing anything else.'
-    )
-    new_instruction = (
-        "When the user types `/graphify`, use the installed graphify skill or instructions "
-        "before doing anything else."
-    )
-    # The sanctioned-edit registry holds exactly this single old->new substitution.
-    assert gen.ALWAYS_ON_SANCTIONED_EDITS["_AGENTS_MD_SECTION"] == (
-        (old_instruction, new_instruction),
-    )
+    sanctioned = gen.ALWAYS_ON_SANCTIONED_EDITS["_AGENTS_MD_SECTION"]
+    assert len(sanctioned) == 1
+    old_block, new_block = sanctioned[0]
+    assert old_block.startswith("## graphify")
+    assert new_block.startswith("## Dreamliner")
+    assert "$dreamliner" in new_block
+    assert "dreamliner query" in new_block
     baseline_agents = gen._always_on_constants(gen.ALWAYS_ON_BASELINE_REF)["_AGENTS_MD_SECTION"]
-    # The ONLY divergence from the frozen baseline is the sanctioned sentence —
-    # any other byte drift would have surfaced as a problem above.
-    assert old_instruction in baseline_agents
-    assert baseline_agents.replace(old_instruction, new_instruction) == rendered_agents
+    rewritten = baseline_agents
+    for old, new in sanctioned:
+        rewritten = rewritten.replace(old, new)
+    assert rewritten == rendered_agents
     assert "`skill` tool" not in rendered_agents
     assert 'skill: "graphify"' not in rendered_agents
+    assert "## Dreamliner" in rendered_agents
 
 
 def test_extracted_constants_equal_the_packaged_always_on_files():
@@ -937,7 +941,7 @@ def test_claude_flavored_hosts_keep_their_hooks_text_unchanged():
     droid's v8 dispatch never had the Trae caveat and its hooks section names
     CLAUDE.md; restoring trae must not bleed into droid or any other host.
     """
-    for key in ("claude", "droid", "codex", "windows", "kilo", "vscode"):
+    for key in ("claude", "droid", "windows", "kilo", "vscode"):
         core, refs = _platform_artifacts(key)
         hooks = refs["hooks.md"]
         assert "graphify claude install" in hooks, f"[{key}] lost the claude install command"
@@ -945,6 +949,15 @@ def test_claude_flavored_hosts_keep_their_hooks_text_unchanged():
         assert "Trae does NOT support PreToolUse hooks" not in core, f"[{key}] leaked the trae caveat"
         assert "Trae does NOT support PreToolUse hooks" not in hooks, f"[{key}] leaked the trae caveat"
         assert "## For the commit hook and native CLAUDE.md integration" in core, f"[{key}] pointer drifted"
+
+    core, refs = _platform_artifacts("codex")
+    hooks = refs["hooks.md"]
+    assert "dreamliner install" in hooks
+    assert "native AGENTS.md integration" in hooks
+    assert "CLAUDE.md" not in hooks
+    assert "Trae does NOT support PreToolUse hooks" not in core
+    assert "Trae does NOT support PreToolUse hooks" not in hooks
+    assert "## For the commit hook and native AGENTS.md integration" in core
 
 
 # --- the amp native AGENTS.md integration (the 13th split host) ----------------
