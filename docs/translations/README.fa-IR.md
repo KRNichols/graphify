@@ -59,6 +59,8 @@ graphify export callflow-html
 
 ## پیش‌نیازها
 
+> **Codex-only fork.** `graphify install` (no `--platform`) registers the Codex skill. Other host install commands are not supported. See the [English README](../../README.md) for current instructions.
+
 </div>
 
 | پیش‌نیاز | حداقل | بررسی | نصب |

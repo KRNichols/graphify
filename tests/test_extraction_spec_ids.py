@@ -65,9 +65,9 @@ def test_spec_files_are_discoverable():
     files = _spec_files()
     assert files, "no extraction-spec.md files found — did the skills tree move?"
     examples = _examples()
-    assert len(examples) >= 13, (
-        f"expected the documented node-ID examples across host specs, parsed only "
-        f"{len(examples)} — the example format may have changed"
+    assert len(examples) >= 2, (
+        f"expected documented node-ID examples in the Codex spec and skillgen "
+        f"fragment, parsed only {len(examples)} — the example format may have changed"
     )
 
 

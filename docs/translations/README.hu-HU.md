@@ -33,6 +33,8 @@ graphify-out/
 
 ## Hogyan működik
 
+> **Codex-only fork.** `graphify install` (no `--platform`) registers the Codex skill. Other host install commands are not supported. See the [English README](../../README.md) for current instructions.
+
 A graphify három menetben dolgozik. Először egy determinisztikus AST-menet kinyeri a struktúrát a kódfájlokból LLM nélkül. Ezután a video- és hangfájlokat a faster-whisper segítségével helyben írja át. Végül a Claude alügynökök párhuzamosan futnak dokumentumokon, cikkeken, képeken és átiratokban. Az eredményeket egy NetworkX-gráfba olvasztja össze, Leiden-nel klaszterezik, és interaktív HTML-ként, lekérdezhető JSON-ként és auditjelentésként exportálja.
 
 Minden kapcsolat `EXTRACTED`, `INFERRED` (megbízhatósági pontszámmal) vagy `AMBIGUOUS` feliratot kap.

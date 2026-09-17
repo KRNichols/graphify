@@ -33,6 +33,8 @@ graphify-out/
 
 ## 運作原理
 
+> **Codex-only fork.** `graphify install` (no `--platform`) registers the Codex skill. Other host install commands are not supported. See the [English README](../../README.md) for current instructions.
+
 graphify 分三個階段工作。首先，確定性 AST 遍歷在不使用 LLM 的情況下從程式碼檔案中提取結構。然後使用 faster-whisper 在本地轉錄視訊和音訊檔案。最後，Claude 子代理並行處理文件、論文、圖片和轉錄文字。結果被合併到 NetworkX 圖譜中，使用 Leiden 進行聚類，並匯出為互動式 HTML、可查詢 JSON 和審計報告。
 
 每個關係都標記為 `EXTRACTED`、`INFERRED`（帶有置信度分數）或 `AMBIGUOUS`。

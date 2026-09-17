@@ -33,6 +33,8 @@ graphify-out/
 
 ## Hur det fungerar
 
+> **Codex-only fork.** `graphify install` (no `--platform`) registers the Codex skill. Other host install commands are not supported. See the [English README](../../README.md) for current instructions.
+
 graphify arbetar i tre pass. Först extraherar ett deterministiskt AST-pass struktur från kodfiler utan LLM. Sedan transkriberas video- och ljudfiler lokalt med faster-whisper. Slutligen kör Claude-subagenter parallellt på dokument, papper, bilder och transkriptioner. Resultaten slås samman i ett NetworkX-diagram, klustras med Leiden och exporteras som interaktiv HTML, frågebar JSON och revisionsrapport.
 
 Varje relation är märkt `EXTRACTED`, `INFERRED` (med konfidenspoäng) eller `AMBIGUOUS`.

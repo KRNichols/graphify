@@ -33,6 +33,8 @@ graphify-out/
 
 ## Jak to funguje
 
+> **Codex-only fork.** `graphify install` (no `--platform`) registers the Codex skill. Other host install commands are not supported. See the [English README](../../README.md) for current instructions.
+
 graphify pracuje ve třech průchodech. Nejprve deterministický průchod AST extrahuje strukturu z kódových souborů bez LLM. Poté jsou video a zvukové soubory přepisovány lokálně pomocí faster-whisper. Nakonec sub-agenti Claude běží paralelně na dokumentech, článcích, obrázcích a přepisech. Výsledky jsou sloučeny do grafu NetworkX, clusterovány pomocí Leiden a exportovány jako interaktivní HTML, dotazovatelný JSON a auditní zpráva.
 
 Každý vztah je označen `EXTRACTED`, `INFERRED` (se skóre spolehlivosti) nebo `AMBIGUOUS`.

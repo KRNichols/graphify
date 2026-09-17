@@ -33,6 +33,8 @@ graphify-out/
 
 ## Paano Gumagana
 
+> **Codex-only fork.** `graphify install` (no `--platform`) registers the Codex skill. Other host install commands are not supported. See the [English README](../../README.md) for current instructions.
+
 Gumagana ang graphify sa tatlong pass. Una, isang deterministikong AST pass ang nag-e-extract ng istruktura mula sa mga code file nang walang LLM. Pagkatapos, ang mga video at audio file ay tina-transcribe nang lokal gamit ang faster-whisper. Panghuli, mga Claude sub-agent ang tumatakbo nang magkakasabay sa mga dokumento, papel, imahe, at transkripsyon. Ang mga resulta ay pinagsasama sa isang NetworkX graph, naka-cluster gamit ang Leiden, at ine-export bilang interactive na HTML, queryable na JSON, at audit report.
 
 Ang bawat relasyon ay may label na `EXTRACTED`, `INFERRED` (may confidence score), o `AMBIGUOUS`.

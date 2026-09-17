@@ -46,7 +46,7 @@ Type `/graphify` in your AI coding assistant and it maps your entire project (co
 
 ```bash
 uv tool install graphifyy      # install the CLI (or: pipx install graphifyy)
-graphify install               # register the skill with your AI assistant
+graphify install               # register the Codex skill (default platform: Codex)
 ```
 
 Then, in your AI assistant:
@@ -64,7 +64,7 @@ graphify-out/
 └── graph.json       the full graph — query it anytime without re-reading your files
 ```
 
-**Works in** Claude Code, Cursor, Codex, Gemini CLI, GitHub Copilot, and 15+ more — [pick your platform](#install).
+**Works in Codex.** `$graphify` is the Codex slash-command; `graphify install` registers the skill.
 
 ---
 
@@ -170,15 +170,15 @@ pipx install graphifyy
 pip install graphifyy  # may need PATH setup — see note below
 ```
 
-**Step 2 — register the skill with your AI assistant:**
+**Step 2 — register the Codex skill:**
 
 ```bash
 graphify install
 ```
 
-That's it. Open your AI assistant and type `/graphify .`
+That's it. Open Codex and type `$graphify .` (or `/graphify .`).
 
-To install the assistant skill into the current repository instead of your user
+To install the Codex skill into the current repository instead of your user
 profile, add `--project`:
 
 ```bash
@@ -186,12 +186,10 @@ graphify install --project
 graphify install --project --platform codex
 ```
 
-Project-scoped installs write under the current directory, for example
-`.claude/skills/graphify/SKILL.md` or `.agents/skills/graphify/SKILL.md` (plus a
-`references/` sidecar the skill loads on demand), and
-print a `git add` hint for files that can be committed.
-Per-platform commands that support project-scoped installs accept the same flag,
-for example `graphify claude install --project` or `graphify codex install --project`.
+Project-scoped installs write `.codex/skills/graphify/SKILL.md` (plus a
+`references/` sidecar the skill loads on demand), `AGENTS.md`, and
+`.codex/hooks.json`, and print a `git add` hint for files that can be committed.
+`graphify codex install --project` does the same always-on wiring.
 
 > **PowerShell note:** Use `graphify .` not `/graphify .` — the leading slash is a path separator in PowerShell.
 
@@ -203,44 +201,11 @@ for example `graphify claude install --project` or `graphify codex install --pro
 
 > **Git hooks and uv tool / pipx:** `graphify hook install` embeds the current interpreter path directly into the hook scripts at install time, so the post-commit hook fires correctly even in GUI git clients and CI runners where `~/.local/bin` is not on PATH. If you reinstall or upgrade graphify, re-run `graphify hook install` to refresh the embedded path.
 
-> **Strict mode (Claude Code):** `graphify install --project --strict` makes the assistant actually use the graph. The default install *nudges* it to run `graphify query` before reading files; strict mode *blocks* the first raw source read of a session and redirects it to the graph, then reverts to the nudge (so it fires at most once per session and never gets stuck). Toggle at runtime with `GRAPHIFY_HOOK_STRICT=1`/`0`; the default install is unchanged (soft nudge).
+This fork is **Codex-only**. `graphify install` and `graphify install --platform codex` both register the Codex skill. Other host flags (`--platform claude`, `graphify cursor install`, and similar) exit with an error.
 
-<details>
-<summary><b>Pick your platform</b> (20+ assistants, click to expand)</summary>
-
-| Platform | Install command |
-|----------|----------------|
-| Claude Code (Linux/Mac) | `graphify install` |
-| Claude Code (Windows) | `graphify install` (auto-detected) or `graphify install --platform windows` |
-| CodeBuddy | `graphify install --platform codebuddy` |
-| Codex | `graphify install --platform codex` |
-| OpenCode | `graphify install --platform opencode` |
-| Kilo Code | `graphify install --platform kilo` |
-| GitHub Copilot CLI | `graphify install --platform copilot` |
-| VS Code Copilot Chat | `graphify vscode install` |
-| Aider | `graphify install --platform aider` |
-| OpenClaw | `graphify install --platform claw` |
-| Factory Droid | `graphify install --platform droid` |
-| Trae | `graphify install --platform trae` |
-| Trae CN | `graphify install --platform trae-cn` |
-| Gemini CLI | `graphify install --platform gemini` |
-| Hermes | `graphify install --platform hermes` |
-| Kimi Code | `graphify install --platform kimi` |
-| Amp | `graphify amp install` |
-| Agent Skills (cross-framework) | `graphify install --platform agents` (alias `--platform skills`) |
-| Kiro IDE/CLI | `graphify kiro install` |
-| Pi coding agent | `graphify install --platform pi` |
-| Cursor | `graphify cursor install` |
-| Devin CLI | `graphify devin install` |
-| Google Antigravity | `graphify antigravity install` |
-
-Codex users also need `multi_agent = true` under `[features]` in `~/.codex/config.toml` for parallel extraction. CodeBuddy uses the same Agent tool and PreToolUse hook mechanism as Claude Code. Factory Droid uses the `Task` tool for parallel subagent dispatch. OpenClaw and Aider use sequential extraction (parallel agent support is still early on those platforms). Trae uses the Agent tool for parallel subagent dispatch and does **not** support `PreToolUse` hooks, so AGENTS.md is the always-on mechanism.
-
-`--platform agents` (alias `--platform skills`) targets the generic cross-framework [Agent-Skills](https://github.com/anthropics/skills) locations: the spec's user-global `~/.agents/skills/` (read by `npx skills` and spec-compliant frameworks) for a global install, and `./.agents/skills/` for a project (`--project`) install. The bare `graphify install` stays single-platform (Claude Code) by design — use the named `agents` platform when you want the skill discoverable by any framework that reads `.agents/skills`.
+Codex also needs `multi_agent = true` under `[features]` in `~/.codex/config.toml` for parallel extraction.
 
 > Codex uses `$graphify` instead of `/graphify`.
-
-</details>
 
 <details>
 <summary><b>Optional extras</b> (install only what you need)</summary>
@@ -281,47 +246,19 @@ Codex users also need `multi_agent = true` under `[features]` in `~/.codex/confi
 
 Run this once in your project after building a graph:
 
-| Platform | Command |
-|----------|---------|
-| Claude Code | `graphify claude install` |
-| CodeBuddy | `graphify codebuddy install` |
-| Codex | `graphify codex install` |
-| OpenCode | `graphify opencode install` |
-| Kilo Code | `graphify kilo install` |
-| GitHub Copilot CLI | `graphify copilot install` |
-| VS Code Copilot Chat | `graphify vscode install` |
-| Aider | `graphify aider install` |
-| OpenClaw | `graphify claw install` |
-| Factory Droid | `graphify droid install` |
-| Trae | `graphify trae install` |
-| Trae CN | `graphify trae-cn install` |
-| Cursor | `graphify cursor install` |
-| Gemini CLI | `graphify gemini install` |
-| Hermes | `graphify hermes install` |
-| Kimi Code | `graphify install --platform kimi` |
-| Amp | `graphify amp install` |
-| Agent Skills (cross-framework) | `graphify agents install` (alias `graphify skills install`) |
-| Kiro IDE/CLI | `graphify kiro install` |
-| Pi coding agent | `graphify pi install` |
-| Devin CLI | `graphify devin install` |
-| Google Antigravity | `graphify antigravity install` |
+```bash
+graphify install --project
+# or:
+graphify codex install
+```
 
-This writes a small config file that tells your assistant to consult the knowledge graph for codebase questions, preferring scoped queries like `graphify query "<question>"` over reading the full report or grepping raw files.
+This writes `AGENTS.md` so Codex consults the knowledge graph for codebase questions, preferring scoped queries like `graphify query "<question>"` over reading the full report or grepping raw files.
 
-- **Hook platforms** (Claude Code, Gemini CLI): a hook fires automatically before search-style tool calls (and, on Claude Code, before reading source files one by one via the Read/Glob tools) and nudges your assistant toward the graph path.
-- **Instruction-file platforms** (Codex, OpenCode, Cursor, etc.): persistent instruction files (`AGENTS.md`, `.cursor/rules/`, etc.) provide the same query-first guidance.
+`graphify install --project` and `graphify codex install` also register a `PreToolUse` hook in `.codex/hooks.json` (`graphify hook-check`), but that entry is deliberately a **no-op**: Codex Desktop rejects `hookSpecificOutput.additionalContext` on `PreToolUse`, so emitting a nudge there would break Bash tool calls. `AGENTS.md` is the always-on mechanism.
 
 `GRAPH_REPORT.md` is still available for broad architecture review.
 
-**CodeBuddy** does the same two things as Claude Code: writes a `CODEBUDDY.md` section telling CodeBuddy to read `graphify-out/GRAPH_REPORT.md` before answering architecture questions, and installs `PreToolUse` hooks (`.codebuddy/settings.json`) that fire before Bash search commands and file reads, nudging toward `graphify query` instead.
-
-**Codex** writes to `AGENTS.md`, which is what actually carries the always-on graph guidance on this platform. `graphify codex install` also registers a `PreToolUse` hook in `.codex/hooks.json` (`graphify hook-check`), but that entry is deliberately a **no-op**: Codex Desktop rejects `hookSpecificOutput.additionalContext` on `PreToolUse`, so emitting a nudge there would break Bash tool calls. Unlike Claude Code, where the hook (`graphify hook-guard`) does the nudging, on Codex the hook fires and intentionally does nothing, and `AGENTS.md` is the always-on mechanism.
-
-**Kilo Code** installs the Graphify skill to `~/.config/kilo/skills/graphify/SKILL.md` and a native `/graphify` command to `~/.config/kilo/command/graphify.md`. `graphify kilo install` also writes `AGENTS.md` plus a native `tool.execute.before` plugin (`.kilo/plugins/graphify.js` + `.kilo/kilo.json` or `.kilo/kilo.jsonc` registration) so Kilo gets the same always-on graph reminder behavior through native `.kilo` config.
-
-**Cursor** writes `.cursor/rules/graphify.mdc` with `alwaysApply: true`, so Cursor includes it in every conversation automatically, no hook needed.
-
-To remove graphify from all platforms at once: `graphify uninstall` (add `--purge` to also delete `graphify-out/`). Or use the per-platform command (e.g. `graphify claude uninstall`).
+To remove the Codex skill and AGENTS.md section: `graphify uninstall` (add `--purge` to also delete `graphify-out/`). Project-scoped: `graphify uninstall --project`.
 
 ---
 
@@ -669,10 +606,10 @@ uv tool upgrade graphifyy
 graphify install  # overwrites the skill file
 ```
 
-**Claude Code prompt cache invalidated after every `graphify extract`**
-Graphify writes output files (`graph.json`, `graphify-out/`) into the workspace. If those paths aren't ignored, every write invalidates Claude Code's prompt cache, forcing a full re-upload at cache-write rates on the next turn. Add them to `.claudeignore`:
+**Workspace ignore for generated graph files**
+Graphify writes output files (`graph.json`, `graphify-out/`) into the workspace. Add them to your assistant ignore file if generated graph output should stay out of context:
+
 ```text
-# .claudeignore
 graph.json
 graphify-out/
 ```
@@ -719,7 +656,7 @@ graphify reflect --graph graphify-out/graph.json  # group lessons by community +
                                    # the overlay tags nodes preferred/tentative/contested (recency-weighted, with provenance);
                                    # graphify explain / query then show a "Lesson:" hint, flagged "code changed — re-verify" when the source moved on
 
-graphify uninstall                 # remove from all platforms in one shot
+graphify uninstall                 # remove the Codex skill and AGENTS.md section
 graphify uninstall --purge         # also delete graphify-out/
 graphify uninstall --project --platform codex  # remove project-scoped install files only
 
@@ -727,45 +664,10 @@ graphify hook install              # post-commit + post-checkout hooks
 graphify hook uninstall
 graphify hook status
 
-# always-on assistant instructions - platform-specific
-graphify claude install            # CLAUDE.md + PreToolUse hook (Claude Code)
-graphify claude uninstall
-graphify codebuddy install         # CODEBUDDY.md + PreToolUse hook (CodeBuddy)
-graphify codebuddy uninstall
-graphify codex install             # AGENTS.md + PreToolUse hook in .codex/hooks.json (Codex)
-graphify opencode install          # AGENTS.md + tool.execute.before plugin (OpenCode)
-graphify kilo install              # native Kilo skill + /graphify command + AGENTS.md + .kilo plugin
-graphify kilo uninstall
-graphify cursor install            # .cursor/rules/graphify.mdc (Cursor)
-graphify cursor uninstall
-graphify gemini install            # GEMINI.md + BeforeTool hook (Gemini CLI)
-graphify gemini uninstall
-graphify copilot install           # skill file (GitHub Copilot CLI)
-graphify copilot uninstall
-graphify aider install             # AGENTS.md (Aider)
-graphify aider uninstall
-graphify claw install              # AGENTS.md (OpenClaw)
-graphify claw uninstall
-graphify droid install             # AGENTS.md (Factory Droid)
-graphify droid uninstall
-graphify trae install              # AGENTS.md (Trae)
-graphify trae uninstall
-graphify trae-cn install           # AGENTS.md (Trae CN)
-graphify trae-cn uninstall
-graphify hermes install             # AGENTS.md + ~/.hermes/skills/ (Hermes)
-graphify hermes uninstall
-graphify amp install               # skill file (Amp)
-graphify amp uninstall
-graphify agents install            # ~/.agents/skills/ + AGENTS.md (cross-framework; alias: graphify skills)
-graphify agents uninstall
-graphify kiro install               # .kiro/skills/ + .kiro/steering/graphify.md (Kiro IDE/CLI)
-graphify kiro uninstall
-graphify pi install                # skill file (Pi coding agent)
-graphify pi uninstall
-graphify devin install             # skill file + .windsurf/rules/graphify.md (Devin CLI)
-graphify devin uninstall
-graphify antigravity install       # .agents/rules + .agents/workflows (Google Antigravity)
-graphify antigravity uninstall
+# always-on Codex instructions (AGENTS.md)
+graphify install --project         # project Codex skill + AGENTS.md
+graphify codex install             # AGENTS.md + no-op PreToolUse hook in .codex/hooks.json
+graphify codex uninstall
 
 graphify extract ./docs                        # headless LLM extraction for CI (no IDE needed)
 graphify extract ./docs --backend gemini       # explicit backend: gemini, kimi, claude, openai, deepseek, ollama, bedrock, or claude-cli

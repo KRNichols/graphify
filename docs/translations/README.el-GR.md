@@ -33,6 +33,8 @@ graphify-out/
 
 ## Πώς λειτουργεί
 
+> **Codex-only fork.** `graphify install` (no `--platform`) registers the Codex skill. Other host install commands are not supported. See the [English README](../../README.md) for current instructions.
+
 Το graphify λειτουργεί σε τρεις διελεύσεις. Πρώτα, μια ντετερμινιστική διέλευση AST εξάγει δομή από αρχεία κώδικα χωρίς LLM. Στη συνέχεια, τα αρχεία βίντεο και ήχου μεταγράφονται τοπικά με faster-whisper. Τέλος, οι υπο-πράκτορες Claude εκτελούνται παράλληλα σε έγγραφα, εργασίες, εικόνες και μεταγραφές. Τα αποτελέσματα συγχωνεύονται σε ένα γράφο NetworkX, ομαδοποιούνται με Leiden και εξάγονται ως διαδραστική HTML, JSON για ερωτήματα και αναφορά ελέγχου.
 
 Κάθε σχέση επισημαίνεται ως `EXTRACTED`, `INFERRED` (με βαθμολογία εμπιστοσύνης) ή `AMBIGUOUS`.

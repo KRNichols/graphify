@@ -33,6 +33,8 @@ graphify-out/
 
 ## Miten se toimii
 
+> **Codex-only fork.** `graphify install` (no `--platform`) registers the Codex skill. Other host install commands are not supported. See the [English README](../../README.md) for current instructions.
+
 graphify toimii kolmessa läpiajossa. Ensin deterministinen AST-läpiajo poimii rakenteen kooditiedostoista ilman LLM:ää. Sitten video- ja äänitiedostot litteroidaan paikallisesti faster-whisperillä. Lopuksi Clauden ala-agentit suoritetaan rinnakkain asiakirjoissa, papereissa, kuvissa ja litteroinneissa. Tulokset yhdistetään NetworkX-graafiin, klusteroidaan Leidenillä ja viedään interaktiivisena HTML:nä, kyselytavissa olevana JSON:na ja tarkastusraporttina.
 
 Jokainen suhde on merkitty `EXTRACTED`, `INFERRED` (luottamuspisteineen) tai `AMBIGUOUS`.

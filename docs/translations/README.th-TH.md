@@ -33,6 +33,8 @@ graphify-out/
 
 ## วิธีการทำงาน
 
+> **Codex-only fork.** `graphify install` (no `--platform`) registers the Codex skill. Other host install commands are not supported. See the [English README](../../README.md) for current instructions.
+
 graphify ทำงานใน 3 รอบ ก่อนอื่น AST pass แบบ deterministic ดึงโครงสร้างจากไฟล์โค้ดโดยไม่ต้องใช้ LLM จากนั้นไฟล์วิดีโอและเสียงถูกถอดเสียงในเครื่องด้วย faster-whisper สุดท้าย Claude sub-agent ทำงานแบบขนานกันบนเอกสาร, งานวิจัย, รูปภาพ และบทถอดเสียง ผลลัพธ์ถูกรวมเข้ากับกราฟ NetworkX, จัดกลุ่มด้วย Leiden และส่งออกเป็น HTML แบบโต้ตอบ, JSON ที่สืบค้นได้ และรายงานการตรวจสอบ
 
 ความสัมพันธ์แต่ละอย่างถูกติดป้าย `EXTRACTED`, `INFERRED` (พร้อมคะแนนความเชื่อมั่น) หรือ `AMBIGUOUS`

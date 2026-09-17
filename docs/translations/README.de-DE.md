@@ -36,6 +36,8 @@ Füge eine `.graphifyignore`-Datei hinzu, um Ordner auszuschließen:
 
 ```
 # .graphifyignore
+
+> **Codex-only fork.** `graphify install` (no `--platform`) registers the Codex skill. Other host install commands are not supported. See the [English README](../../README.md) for current instructions.
 vendor/
 node_modules/
 dist/

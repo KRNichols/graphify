@@ -1,4 +1,4 @@
-"""graphify CLI - `graphify install` sets up the Claude Code skill."""
+"""graphify CLI - `graphify install` sets up the Codex skill."""
 
 from __future__ import annotations
 import errno
@@ -134,12 +134,7 @@ from graphify.cli import (  # noqa: E402,F401
 
 
 _ALWAYS_ON_ALIASES = {
-    "_CLAUDE_MD_SECTION": "claude-md",
     "_AGENTS_MD_SECTION": "agents-md",
-    "_GEMINI_MD_SECTION": "gemini-md",
-    "_VSCODE_INSTRUCTIONS_SECTION": "vscode-instructions",
-    "_ANTIGRAVITY_RULES": "antigravity-rules",
-    "_KIRO_STEERING": "kiro-steering",
 }
 
 
@@ -228,7 +223,7 @@ def _check_skill_version(skill_dst: Path, platform_names: "list[str] | None" = N
             print(
                 f"  warning: skill at {skill_dst.parent} is from graphify {installed}, "
                 f"package is {__version__}. Run '{_cmd}' to update it "
-                f"(a plain 'graphify install' refreshes only the detected platform).",
+                f"(a plain 'graphify install' refreshes the Codex skill).",
                 file=sys.stderr,
             )
 
@@ -533,8 +528,8 @@ def _run_cli() -> None:
         print("Usage: graphify <command>")
         print()
         print("Commands:")
-        print("  install [--platform P]  copy skill to platform config dir (claude|windows|codebuddy|codex|opencode|aider|amp|agents|claw|droid|trae|trae-cn|gemini|cursor|antigravity|hermes|kiro|pi|devin)")
-        print("  uninstall               remove graphify from all detected platforms in one shot")
+        print("  install [--platform P]  copy the Codex skill to ~/.codex/skills (default platform: codex)")
+        print("  uninstall               remove the Codex skill, AGENTS.md section, and leftover host files")
         print("    --purge                 also delete graphify-out/ directory")
         print("  path \"A\" \"B\"            shortest path between two nodes in graph.json")
         print("    --graph <path>          path to graph.json (default graphify-out/graph.json)")
@@ -664,73 +659,11 @@ def _run_cli() -> None:
         print("                          (or set NEO4J_PASSWORD instead of --password to keep it off argv)")
         print("  export falkordb         emit Cypher or push to FalkorDB [--graph PATH] [--push URI] [--user U] [--password P]")
         print("                          (or set FALKORDB_PASSWORD instead of --password to keep it off argv)")
-        print("  hook install            install post-commit/post-checkout git hooks (all platforms)")
+        print("  hook install            install post-commit/post-checkout git hooks")
         print("  hook uninstall          remove git hooks")
         print("  hook status             check if git hooks are installed")
-        print(
-            "  gemini install          write GEMINI.md section + BeforeTool hook (Gemini CLI)"
-        )
-        print("  gemini uninstall        remove GEMINI.md section + BeforeTool hook")
-        print("  cursor install          write .cursor/rules/graphify.mdc (Cursor)")
-        print("  cursor uninstall        remove .cursor/rules/graphify.mdc")
-        print("  claude install          write graphify section to CLAUDE.md + PreToolUse hook (Claude Code)")
-        print("  claude uninstall        remove graphify section from CLAUDE.md + PreToolUse hook")
-        print("  codebuddy install       write graphify section to CODEBUDDY.md + PreToolUse hook (CodeBuddy)")
-        print("  codebuddy uninstall     remove graphify section from CODEBUDDY.md + PreToolUse hook")
-        print("  codex install           write graphify section to AGENTS.md (Codex)")
+        print("  codex install           write graphify section to AGENTS.md (Codex always-on)")
         print("  codex uninstall         remove graphify section from AGENTS.md")
-        print(
-            "  opencode install        write graphify section to AGENTS.md + tool.execute.before plugin (OpenCode)"
-        )
-        print(
-            "  opencode uninstall      remove graphify section from AGENTS.md + plugin"
-        )
-        print(
-            "  kilo install            install native Kilo skill + command + AGENTS.md + .kilo plugin"
-        )
-        print(
-            "  kilo uninstall          remove native Kilo skill + command + AGENTS.md + .kilo plugin"
-        )
-        print("  aider install           write graphify section to AGENTS.md (Aider)")
-        print("  aider uninstall         remove graphify section from AGENTS.md")
-        print(
-            "  copilot install         copy graphify skill to ~/.copilot/skills (GitHub Copilot CLI)"
-        )
-        print("  copilot uninstall       remove graphify skill from ~/.copilot/skills")
-        print(
-            "  vscode install          configure VS Code Copilot Chat (skill + .github/copilot-instructions.md)"
-        )
-        print("  vscode uninstall        remove VS Code Copilot Chat configuration")
-        print(
-            "  claw install            write graphify section to AGENTS.md (OpenClaw)"
-        )
-        print("  claw uninstall          remove graphify section from AGENTS.md")
-        print(
-            "  droid install           write graphify section to AGENTS.md (Factory Droid)"
-        )
-        print("  droid uninstall        remove graphify section from AGENTS.md")
-        print("  trae install            write graphify section to AGENTS.md (Trae)")
-        print("  trae uninstall         remove graphify section from AGENTS.md")
-        print("  trae-cn install         write graphify section to AGENTS.md (Trae CN)")
-        print("  trae-cn uninstall      remove graphify section from AGENTS.md")
-        print(
-            "  antigravity install     write .agents/rules + .agents/workflows + skill (Google Antigravity)"
-        )
-        print(
-            "  antigravity uninstall   remove .agents/rules, .agents/workflows, and skill"
-        )
-        print(
-            "  hermes install          write skill to ~/.hermes/skills/graphify/ (Hermes)"
-        )
-        print("  hermes uninstall        remove skill from ~/.hermes/skills/graphify/")
-        print(
-            "  kiro install            write skill to .kiro/skills/graphify/ + steering file (Kiro IDE/CLI)"
-        )
-        print("  kiro uninstall          remove skill + steering file")
-        print("  pi install              write skill to ~/.pi/agent/skills/graphify/ (Pi coding agent)")
-        print("  pi uninstall            remove skill from ~/.pi/agent/skills/graphify/")
-        print("  devin install           write skill to ~/.config/devin/skills/graphify/ (Devin CLI)")
-        print("  devin uninstall         remove skill from ~/.config/devin/skills/graphify/")
         print()
         return
 
@@ -738,7 +671,7 @@ def _run_cli() -> None:
 
     # Universal help guard: -h/--help/-? anywhere after the command shows help
     # and stops — prevents flags from silently triggering destructive subcommands
-    # (e.g. "cursor install --help" was silently installing into Cursor, #821).
+    # (e.g. "codex install --help" must not silently install, #821).
     # Exempt: free-text commands (user string may contain these tokens), and
     # "install"/"uninstall" which have their own per-subcommand help handlers.
     _FREE_TEXT_CMDS = {"query", "explain", "path", "save-result", "install", "uninstall"}

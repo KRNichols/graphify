@@ -50,6 +50,8 @@ graphify export callflow-html
 
 ## Вимоги
 
+> **Codex-only fork.** `graphify install` (no `--platform`) registers the Codex skill. Other host install commands are not supported. See the [English README](../../README.md) for current instructions.
+
 | Вимога | Мінімум | Перевірка | Встановлення |
 |---|---|---|---|
 | Python | 3.10+ | `python --version` | [python.org](https://www.python.org/downloads/) |

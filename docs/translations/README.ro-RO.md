@@ -33,6 +33,8 @@ graphify-out/
 
 ## Cum funcționează
 
+> **Codex-only fork.** `graphify install` (no `--platform`) registers the Codex skill. Other host install commands are not supported. See the [English README](../../README.md) for current instructions.
+
 graphify lucrează în trei treceri. Mai întâi, o trecere AST deterministă extrage structura din fișierele de cod fără LLM. Apoi fișierele video și audio sunt transcrise local cu faster-whisper. În final, sub-agenții Claude rulează în paralel pe documente, lucrări, imagini și transcrieri. Rezultatele sunt îmbinate într-un graf NetworkX, grupate cu Leiden și exportate ca HTML interactiv, JSON interogabil și raport de audit.
 
 Fiecare relație este etichetată `EXTRACTED`, `INFERRED` (cu scor de încredere) sau `AMBIGUOUS`.
