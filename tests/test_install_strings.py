@@ -125,13 +125,14 @@ def test_report_is_still_referenced_as_fallback():
 
 def test_agents_section_does_not_skip_dirty_graph_output():
     assert "Dirty graphify-out/ files are expected" in _AGENTS_MD_SECTION
-    assert "not a reason to skip graphify" in _AGENTS_MD_SECTION
+    assert "not a reason to skip Dreamliner" in _AGENTS_MD_SECTION
 
 
 def test_agents_section_uses_generic_graphify_instruction():
     assert "`skill` tool" not in _AGENTS_MD_SECTION
     assert 'skill: "graphify"' not in _AGENTS_MD_SECTION
-    assert "use the installed graphify skill" in _AGENTS_MD_SECTION
+    assert "use the installed Dreamliner skill" in _AGENTS_MD_SECTION
+    assert "$dreamliner" in _AGENTS_MD_SECTION
 
 
 def test_skill_registration_uses_host_generic_instruction():

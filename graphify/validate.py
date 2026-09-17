@@ -93,3 +93,25 @@ def assert_valid(data: dict) -> None:
     if errors:
         msg = f"Extraction JSON has {len(errors)} error(s):\n" + "\n".join(f"  • {e}" for e in errors)
         raise ValueError(msg)
+
+
+def format_validation_failure(errors: list[str], *, source: str = "extraction") -> str:
+    """Actionable user-facing text for a failed validation.
+
+    Does not change ``validate_extraction`` / ``assert_valid``. There is no
+    product-level "verify" command; this is validation of extraction JSON.
+    """
+    n = len(errors)
+    lines = [
+        f"error: Dreamliner validation failed ({n} issue(s) in {source}).",
+        "  Extraction JSON must include nodes[] and edges[] with required fields",
+        "  (id, label, file_type, source_file on nodes; source, target, relation,",
+        "  confidence, source_file on edges).",
+        "  Fix the extractor output (or the LLM chunk JSON) and re-run.",
+        "  Details:",
+    ]
+    shown = errors[:20]
+    lines.extend(f"  • {e}" for e in shown)
+    if n > 20:
+        lines.append(f"  … and {n - 20} more")
+    return "\n".join(lines)

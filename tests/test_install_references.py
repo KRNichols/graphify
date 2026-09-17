@@ -491,7 +491,7 @@ def test_amp_user_install_carries_references(tmp_path, monkeypatch):
     install copies the actual committed references alongside SKILL.md. This is the
     case the progressive split was built to cover: amp was the omitted 13th host.
     """
-    from graphify.__main__ import main
+    from graphify.install import _amp_install, _amp_uninstall
 
     assert (PKG_DIR / "skills" / "amp" / "references" / "hooks.md").exists(), (
         "amp's references bundle must ship in this build"
@@ -501,17 +501,15 @@ def test_amp_user_install_carries_references(tmp_path, monkeypatch):
     project = tmp_path / "project"
     project.mkdir()
     monkeypatch.chdir(project)
-    with patch("graphify.__main__.Path.home", return_value=home):
-        monkeypatch.setattr(sys, "argv", ["graphify", "amp", "install"])
-        main()
+    with patch("graphify.install.Path.home", return_value=home):
+        _amp_install(project)
         skill_dir = home / ".config" / "agents" / "skills" / "graphify"
         assert (skill_dir / "SKILL.md").exists()
         # A representative reference from the shipped amp bundle lands too.
         assert (skill_dir / "references" / "exports.md").exists()
         assert (skill_dir / "references" / "hooks.md").exists()
 
-        monkeypatch.setattr(sys, "argv", ["graphify", "amp", "uninstall"])
-        main()
+        _amp_uninstall(project)
 
     assert not skill_dir.exists()
 

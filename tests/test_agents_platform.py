@@ -5,9 +5,9 @@ alias) installs the skill to the cross-framework Agent-Skills locations: the
 spec's user-global ``~/.agents/skills`` and project ``./.agents/skills`` — the
 directories ``npx skills`` and spec-compliant frameworks read.
 
-The bare ``graphify install`` behaviour (claude/windows only) is unchanged; the
-named platform is opt-in. The ``graphify agents install`` subcommand is the
-amp-twin: it also wires AGENTS.md, matching the rendered hooks reference.
+The bare ``graphify install`` behaviour is Codex-only in this Dreamliner fork.
+Library ``install(platform="agents")`` still writes the generic Agent-Skills
+location. The ``graphify agents install`` CLI subcommand is gated.
 """
 import os
 import sys
@@ -61,9 +61,35 @@ def _run(tmp_path, argv, home):
         os.chdir(old_cwd)
 
 
+def _lib_install(cwd, home, platform, *, project=False):
+    """Library install — CLI `--platform` is Codex-gated in this fork."""
+    old = os.getcwd()
+    try:
+        os.chdir(cwd)
+        with patch("graphify.install.Path.home", return_value=home):
+            if project:
+                mainmod._project_install(platform, cwd)
+            else:
+                mainmod.install(platform=platform)
+    finally:
+        os.chdir(old)
+
+
+@pytest.mark.parametrize("platform_arg", ["agents", "skills"])
+def test_cli_install_platform_agents_is_gated(tmp_path, platform_arg, capsys):
+    home = tmp_path / "home"
+    cwd = tmp_path / "cwd"
+    home.mkdir()
+    cwd.mkdir()
+    with pytest.raises(SystemExit) as exc:
+        _run(cwd, ["install", "--platform", platform_arg], home)
+    assert exc.value.code == 2
+    assert "Dreamliner is Codex-only" in capsys.readouterr().err
+
+
 @pytest.mark.parametrize("platform_arg", ["agents", "skills"])
 def test_install_platform_agents_writes_user_global_skill_only(tmp_path, platform_arg):
-    """`graphify install --platform agents|skills` writes ~/.agents/skills/...
+    """Library `install(platform=agents|skills)` writes ~/.agents/skills/...
     SKILL.md (+ references) and nothing else — no AGENTS.md (skill-only, like
     `--platform amp`)."""
     home = tmp_path / "home"
@@ -71,7 +97,7 @@ def test_install_platform_agents_writes_user_global_skill_only(tmp_path, platfor
     home.mkdir()
     cwd.mkdir()
 
-    _run(cwd, ["install", "--platform", platform_arg], home)
+    _lib_install(cwd, home, platform_arg)
 
     skill = home / ".agents" / "skills" / "graphify" / "SKILL.md"
     assert skill.exists()
@@ -89,7 +115,7 @@ def test_uninstall_platform_agents_removes_user_global_skill(tmp_path):
     home.mkdir()
     cwd.mkdir()
 
-    _run(cwd, ["install", "--platform", "agents"], home)
+    _lib_install(cwd, home, "agents")
     skill = home / ".agents" / "skills" / "graphify" / "SKILL.md"
     assert skill.exists()
 
@@ -112,7 +138,7 @@ def test_uninstall_platform_flag_global_removes_skill(tmp_path, platform_arg):
     home.mkdir()
     cwd.mkdir()
 
-    _run(cwd, ["install", "--platform", platform_arg], home)
+    _lib_install(cwd, home, platform_arg)
     skill = home / ".agents" / "skills" / "graphify" / "SKILL.md"
     assert skill.exists()
 
@@ -129,7 +155,7 @@ def test_project_uninstall_all_removes_agents_skill(tmp_path):
     home.mkdir()
     proj.mkdir()
 
-    _run(proj, ["install", "--project", "--platform", "agents"], home)
+    _lib_install(proj, home, "agents", project=True)
     project_skill = proj / ".agents" / "skills" / "graphify" / "SKILL.md"
     assert project_skill.exists()
 
@@ -138,14 +164,14 @@ def test_project_uninstall_all_removes_agents_skill(tmp_path):
 
 
 def test_install_platform_agents_project_writes_dot_agents(tmp_path):
-    """`graphify install --project --platform agents` writes ./.agents/skills and
+    """Library project install for agents writes ./.agents/skills and
     leaves user scope untouched."""
     home = tmp_path / "home"
     proj = tmp_path / "proj"
     home.mkdir()
     proj.mkdir()
 
-    _run(proj, ["install", "--project", "--platform", "agents"], home)
+    _lib_install(proj, home, "agents", project=True)
 
     project_skill = proj / ".agents" / "skills" / "graphify" / "SKILL.md"
     assert project_skill.exists()
@@ -160,16 +186,31 @@ def test_install_platform_agents_project_writes_dot_agents(tmp_path):
 # --- the amp-twin subcommand (graphify agents install) -------------------------
 
 
-def test_agents_subcommand_install_also_wires_agents_md(tmp_path):
-    """`graphify agents install` is the amp-twin: skill at ~/.agents/skills PLUS a
-    `## graphify` section in AGENTS.md (so the rendered hooks reference, which
-    points at `graphify agents install`, stays honest)."""
+def test_agents_subcommand_is_gated(tmp_path, capsys):
+    home = tmp_path / "home"
+    cwd = tmp_path / "cwd"
+    home.mkdir()
+    cwd.mkdir()
+    with pytest.raises(SystemExit) as exc:
+        _run(cwd, ["agents", "install"], home)
+    assert exc.value.code == 2
+    assert "Dreamliner is Codex-only" in capsys.readouterr().err
+
+
+def test_agents_library_install_also_wires_agents_md(tmp_path):
+    """Library `_agents_platform_install` still writes skill + AGENTS.md."""
     home = tmp_path / "home"
     cwd = tmp_path / "cwd"
     home.mkdir()
     cwd.mkdir()
 
-    _run(cwd, ["agents", "install"], home)
+    old = os.getcwd()
+    try:
+        os.chdir(cwd)
+        with patch("graphify.install.Path.home", return_value=home):
+            mainmod._agents_platform_install(cwd)
+    finally:
+        os.chdir(old)
 
     skill = home / ".agents" / "skills" / "graphify" / "SKILL.md"
     agents_md = cwd / "AGENTS.md"
@@ -177,55 +218,32 @@ def test_agents_subcommand_install_also_wires_agents_md(tmp_path):
     assert agents_md.exists()
     assert "## graphify" in agents_md.read_text(encoding="utf-8")
 
-    _run(cwd, ["agents", "uninstall"], home)
-    assert not skill.exists()
-    # The section is stripped unconditionally: the file is either removed (it held
-    # only our section) or no longer contains the marker.
-    assert not agents_md.exists() or "## graphify" not in agents_md.read_text(encoding="utf-8")
 
-
-def test_agents_subcommand_install_is_idempotent(tmp_path):
-    """Running `graphify agents install` twice leaves a single AGENTS.md section."""
+def test_agents_library_install_is_idempotent(tmp_path):
     home = tmp_path / "home"
     cwd = tmp_path / "cwd"
     home.mkdir()
     cwd.mkdir()
 
-    _run(cwd, ["agents", "install"], home)
-    _run(cwd, ["agents", "install"], home)
+    old = os.getcwd()
+    try:
+        os.chdir(cwd)
+        with patch("graphify.install.Path.home", return_value=home):
+            mainmod._agents_platform_install(cwd)
+            mainmod._agents_platform_install(cwd)
+    finally:
+        os.chdir(old)
 
     body = (cwd / "AGENTS.md").read_text(encoding="utf-8")
     assert body.count("## graphify") == 1, "AGENTS.md gained a duplicate graphify section"
 
 
-def test_skills_subcommand_is_the_agents_subcommand(tmp_path):
-    """`graphify skills install`/`uninstall` behaves exactly like the agents form:
-    skill at ~/.agents/skills (with references) PLUS the AGENTS.md section."""
-    home = tmp_path / "home"
-    cwd = tmp_path / "cwd"
-    home.mkdir()
-    cwd.mkdir()
-
-    _run(cwd, ["skills", "install"], home)
-    skill = home / ".agents" / "skills" / "graphify" / "SKILL.md"
-    agents_md = cwd / "AGENTS.md"
-    assert skill.exists()
-    assert (skill.parent / "references" / "extraction-spec.md").exists()
-    assert agents_md.exists()
-    assert "## graphify" in agents_md.read_text(encoding="utf-8")
-
-    # The `skills` alias of the uninstall subcommand tears it back down.
-    _run(cwd, ["skills", "uninstall"], home)
-    assert not skill.exists()
-    assert not agents_md.exists() or "## graphify" not in agents_md.read_text(encoding="utf-8")
-
-
-# --- bare install is unchanged -------------------------------------------------
+# --- bare install is Codex-only -------------------------------------------------
 
 
 def test_bare_install_does_not_touch_dot_agents(tmp_path):
-    """`graphify install` (no platform) stays single-platform claude/windows and
-    never populates ~/.agents/skills (the #1432 out-of-scope guarantee)."""
+    """`graphify install` (no platform) is Codex-only and never populates
+    ~/.agents/skills (the #1432 out-of-scope guarantee)."""
     home = tmp_path / "home"
     cwd = tmp_path / "cwd"
     home.mkdir()
@@ -233,3 +251,4 @@ def test_bare_install_does_not_touch_dot_agents(tmp_path):
 
     _run(cwd, ["install"], home)
     assert not (home / ".agents" / "skills").exists()
+    assert (home / ".codex" / "skills" / "graphify" / "SKILL.md").exists()

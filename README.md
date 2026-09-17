@@ -1,10 +1,8 @@
-<p align="center">
-  <a href="https://graphify.com"><img src="https://raw.githubusercontent.com/Graphify-Labs/graphify/v8/docs/graphify-logo.png" width="480" height="252" alt="Graphify"/></a>
-</p>
+# Dreamliner
 
-<p align="center">
-  <a href="https://trendshift.io/repositories/25296?utm_source=repository-badge&amp;utm_medium=badge&amp;utm_campaign=badge-repository-25296" target="_blank" rel="noopener noreferrer"><img src="https://trendshift.io/api/badge/repositories/25296" alt="Graphify-Labs%2Fgraphify | Trendshift" width="250" height="55"/></a>
-</p>
+**Codex-only knowledge graph for your repo.** Type `$dreamliner` in Codex and it maps your project (code, docs, PDFs, images, videos) into a graph you can query instead of grepping.
+
+This is a Dreamliner fork of [graphify](https://github.com/Graphify-Labs/graphify). Claude Code, Cursor, Gemini CLI, and other hosts are **not** first-class here. The install path is Codex only.
 
 <div align="center">
 <details><summary><b>Read this in other languages</b></summary>
@@ -27,7 +25,7 @@
   <b>Early access to the graphify platform is open before the public v1 launch: <a href="https://app.graphify.com/login">app.graphify.com</a></b>
 </p>
 
-Type `/graphify` in your AI coding assistant and it maps your entire project (code, docs, PDFs, images, videos) into a **knowledge graph** you can **query instead of grepping** through files.
+Type `$dreamliner` in Codex and it maps your entire project (code, docs, PDFs, images, videos) into a **knowledge graph** you can **query instead of grepping** through files.
 
 - **Code maps for free, fully local.** Code is parsed with tree-sitter AST: deterministic, no LLM, nothing leaves your machine. (Docs, PDFs, images and video use your assistant's model, or a configured API key, for a semantic pass.)
 - **Every edge is explained.** Each connection is tagged `EXTRACTED` (explicit in the source) or `INFERRED` (resolved by graphify), so you can tell what was read directly from what was inferred.
@@ -42,17 +40,17 @@ Type `/graphify` in your AI coding assistant and it maps your entire project (co
   <em>The FastAPI codebase mapped by graphify. Every node is a concept, colors are detected communities, and the whole thing is clickable in graph.html.</em>
 </p>
 
-**Get started** (30 seconds):
+**Get started** (30 seconds, Codex only):
 
 ```bash
 uv tool install graphifyy      # install the CLI (or: pipx install graphifyy)
-graphify install               # register the skill with your AI assistant
+graphify install               # same as: graphify install --platform codex
 ```
 
-Then, in your AI assistant:
+Then, in Codex:
 
 ```
-/graphify .
+$dreamliner .
 ```
 
 That's it. You get **three files**:
@@ -64,7 +62,7 @@ graphify-out/
 └── graph.json       the full graph — query it anytime without re-reading your files
 ```
 
-**Works in** Claude Code, Cursor, Codex, Gemini CLI, GitHub Copilot, and 15+ more — [pick your platform](#install).
+**Works in Codex.** This Dreamliner fork does not install Claude Code, Cursor, Gemini CLI, or other hosts. Use `graphify install --platform codex`.
 
 ---
 
@@ -157,7 +155,7 @@ curl -LsSf https://astral.sh/uv/install.sh | sh
 
 ## Install
 
-> **Official package:** The PyPI package is `graphifyy` (double-y). Other `graphify*` packages on PyPI are not affiliated. The CLI command is still `graphify`.
+> **Dreamliner (Codex-only):** the CLI command is still `graphify`. The Codex skill invoke is `$dreamliner`. Other hosts are not first-class in this fork.
 
 **Step 1 — install the package:**
 
@@ -168,17 +166,22 @@ uv tool install graphifyy
 # Alternatives:
 pipx install graphifyy
 pip install graphifyy  # may need PATH setup — see note below
+
+# From this repo (this fork):
+uv tool install --from . graphifyy
 ```
 
-**Step 2 — register the skill with your AI assistant:**
+**Step 2 — register the Dreamliner skill with Codex:**
 
 ```bash
 graphify install
+# same as:
+graphify install --platform codex
 ```
 
-That's it. Open your AI assistant and type `/graphify .`
+That's it. Open Codex and type `$dreamliner .`
 
-To install the assistant skill into the current repository instead of your user
+To install the skill into the current repository instead of your user
 profile, add `--project`:
 
 ```bash
@@ -186,14 +189,11 @@ graphify install --project
 graphify install --project --platform codex
 ```
 
-Project-scoped installs write under the current directory, for example
-`.claude/skills/graphify/SKILL.md` or `.agents/skills/graphify/SKILL.md` (plus a
-`references/` sidecar the skill loads on demand), and
+Project-scoped installs write `.codex/skills/graphify/SKILL.md` (plus a
+`references/` sidecar), `AGENTS.md`, and `.codex/hooks.json`, and
 print a `git add` hint for files that can be committed.
-Per-platform commands that support project-scoped installs accept the same flag,
-for example `graphify claude install --project` or `graphify codex install --project`.
 
-> **PowerShell note:** Use `graphify .` not `/graphify .` — the leading slash is a path separator in PowerShell.
+> **PowerShell note:** Use `graphify .` in a terminal. In Codex the skill invoke is `$dreamliner .`.
 
 > **`graphify: command not found`?** `uv tool install` / `pipx install` put the `graphify` command in their tool bin dir (`~/.local/bin`). If your shell can't find it right after install — common on a fresh macOS + zsh setup — that dir isn't on your `PATH` yet: run `uv tool update-shell` (or `pipx ensurepath`), then open a new terminal. With plain `pip`, add `~/.local/bin` (Linux) or `~/Library/Python/3.x/bin` (Mac) to your PATH, or run `python -m graphify`.
 
@@ -203,42 +203,14 @@ for example `graphify claude install --project` or `graphify codex install --pro
 
 > **Git hooks and uv tool / pipx:** `graphify hook install` embeds the current interpreter path directly into the hook scripts at install time, so the post-commit hook fires correctly even in GUI git clients and CI runners where `~/.local/bin` is not on PATH. If you reinstall or upgrade graphify, re-run `graphify hook install` to refresh the embedded path.
 
-> **Strict mode (Claude Code):** `graphify install --project --strict` makes the assistant actually use the graph. The default install *nudges* it to run `graphify query` before reading files; strict mode *blocks* the first raw source read of a session and redirects it to the graph, then reverts to the nudge (so it fires at most once per session and never gets stuck). Toggle at runtime with `GRAPHIFY_HOOK_STRICT=1`/`0`; the default install is unchanged (soft nudge).
+> **Codex multi-agent:** add `multi_agent = true` under `[features]` in `~/.codex/config.toml` so `$dreamliner` can dispatch parallel extraction. Restart Codex after editing the file.
 
 <details>
-<summary><b>Pick your platform</b> (20+ assistants, click to expand)</summary>
+<summary><b>Other hosts are not first-class</b></summary>
 
-| Platform | Install command |
-|----------|----------------|
-| Claude Code (Linux/Mac) | `graphify install` |
-| Claude Code (Windows) | `graphify install` (auto-detected) or `graphify install --platform windows` |
-| CodeBuddy | `graphify install --platform codebuddy` |
-| Codex | `graphify install --platform codex` |
-| OpenCode | `graphify install --platform opencode` |
-| Kilo Code | `graphify install --platform kilo` |
-| GitHub Copilot CLI | `graphify install --platform copilot` |
-| VS Code Copilot Chat | `graphify vscode install` |
-| Aider | `graphify install --platform aider` |
-| OpenClaw | `graphify install --platform claw` |
-| Factory Droid | `graphify install --platform droid` |
-| Trae | `graphify install --platform trae` |
-| Trae CN | `graphify install --platform trae-cn` |
-| Gemini CLI | `graphify install --platform gemini` |
-| Hermes | `graphify install --platform hermes` |
-| Kimi Code | `graphify install --platform kimi` |
-| Amp | `graphify amp install` |
-| Agent Skills (cross-framework) | `graphify install --platform agents` (alias `--platform skills`) |
-| Kiro IDE/CLI | `graphify kiro install` |
-| Pi coding agent | `graphify install --platform pi` |
-| Cursor | `graphify cursor install` |
-| Devin CLI | `graphify devin install` |
-| Google Antigravity | `graphify antigravity install` |
-
-Codex users also need `multi_agent = true` under `[features]` in `~/.codex/config.toml` for parallel extraction. CodeBuddy uses the same Agent tool and PreToolUse hook mechanism as Claude Code. Factory Droid uses the `Task` tool for parallel subagent dispatch. OpenClaw and Aider use sequential extraction (parallel agent support is still early on those platforms). Trae uses the Agent tool for parallel subagent dispatch and does **not** support `PreToolUse` hooks, so AGENTS.md is the always-on mechanism.
-
-`--platform agents` (alias `--platform skills`) targets the generic cross-framework [Agent-Skills](https://github.com/anthropics/skills) locations: the spec's user-global `~/.agents/skills/` (read by `npx skills` and spec-compliant frameworks) for a global install, and `./.agents/skills/` for a project (`--project`) install. The bare `graphify install` stays single-platform (Claude Code) by design — use the named `agents` platform when you want the skill discoverable by any framework that reads `.agents/skills`.
-
-> Codex uses `$graphify` instead of `/graphify`.
+This Dreamliner fork gates `graphify install --platform <other>` and
+`graphify claude|cursor|gemini|… install`. Those commands exit with an
+actionable Codex-only message. Use `graphify install --platform codex`.
 
 </details>
 
@@ -277,51 +249,23 @@ Codex users also need `multi_agent = true` under `[features]` in `~/.codex/confi
 
 ---
 
-## Make your assistant always use the graph
+## Make Codex always use the graph
 
-Run this once in your project after building a graph:
+```bash
+graphify install --project
+# or:
+graphify install --platform codex --project
+```
 
-| Platform | Command |
-|----------|---------|
-| Claude Code | `graphify claude install` |
-| CodeBuddy | `graphify codebuddy install` |
-| Codex | `graphify codex install` |
-| OpenCode | `graphify opencode install` |
-| Kilo Code | `graphify kilo install` |
-| GitHub Copilot CLI | `graphify copilot install` |
-| VS Code Copilot Chat | `graphify vscode install` |
-| Aider | `graphify aider install` |
-| OpenClaw | `graphify claw install` |
-| Factory Droid | `graphify droid install` |
-| Trae | `graphify trae install` |
-| Trae CN | `graphify trae-cn install` |
-| Cursor | `graphify cursor install` |
-| Gemini CLI | `graphify gemini install` |
-| Hermes | `graphify hermes install` |
-| Kimi Code | `graphify install --platform kimi` |
-| Amp | `graphify amp install` |
-| Agent Skills (cross-framework) | `graphify agents install` (alias `graphify skills install`) |
-| Kiro IDE/CLI | `graphify kiro install` |
-| Pi coding agent | `graphify pi install` |
-| Devin CLI | `graphify devin install` |
-| Google Antigravity | `graphify antigravity install` |
+This writes `AGENTS.md` so Codex consults the Dreamliner graph for codebase questions (`graphify query "<question>"`) instead of grepping raw files. It also copies the skill to `.codex/skills/graphify/SKILL.md`.
 
-This writes a small config file that tells your assistant to consult the knowledge graph for codebase questions, preferring scoped queries like `graphify query "<question>"` over reading the full report or grepping raw files.
+`graphify install` (no `--project`) writes the skill under `~/.codex/skills/graphify/` and still prints Codex prerequisite warnings (missing `codex` CLI, or `~/.codex/config.toml` without `multi_agent = true`).
 
-- **Hook platforms** (Claude Code, Gemini CLI): a hook fires automatically before search-style tool calls (and, on Claude Code, before reading source files one by one via the Read/Glob tools) and nudges your assistant toward the graph path.
-- **Instruction-file platforms** (Codex, OpenCode, Cursor, etc.): persistent instruction files (`AGENTS.md`, `.cursor/rules/`, etc.) provide the same query-first guidance.
+The `.codex/hooks.json` PreToolUse entry is an intentional no-op: Codex Desktop rejects `additionalContext` on PreToolUse, so `AGENTS.md` is the always-on mechanism.
 
 `GRAPH_REPORT.md` is still available for broad architecture review.
 
-**CodeBuddy** does the same two things as Claude Code: writes a `CODEBUDDY.md` section telling CodeBuddy to read `graphify-out/GRAPH_REPORT.md` before answering architecture questions, and installs `PreToolUse` hooks (`.codebuddy/settings.json`) that fire before Bash search commands and file reads, nudging toward `graphify query` instead.
-
-**Codex** writes to `AGENTS.md`, which is what actually carries the always-on graph guidance on this platform. `graphify codex install` also registers a `PreToolUse` hook in `.codex/hooks.json` (`graphify hook-check`), but that entry is deliberately a **no-op**: Codex Desktop rejects `hookSpecificOutput.additionalContext` on `PreToolUse`, so emitting a nudge there would break Bash tool calls. Unlike Claude Code, where the hook (`graphify hook-guard`) does the nudging, on Codex the hook fires and intentionally does nothing, and `AGENTS.md` is the always-on mechanism.
-
-**Kilo Code** installs the Graphify skill to `~/.config/kilo/skills/graphify/SKILL.md` and a native `/graphify` command to `~/.config/kilo/command/graphify.md`. `graphify kilo install` also writes `AGENTS.md` plus a native `tool.execute.before` plugin (`.kilo/plugins/graphify.js` + `.kilo/kilo.json` or `.kilo/kilo.jsonc` registration) so Kilo gets the same always-on graph reminder behavior through native `.kilo` config.
-
-**Cursor** writes `.cursor/rules/graphify.mdc` with `alwaysApply: true`, so Cursor includes it in every conversation automatically, no hook needed.
-
-To remove graphify from all platforms at once: `graphify uninstall` (add `--purge` to also delete `graphify-out/`). Or use the per-platform command (e.g. `graphify claude uninstall`).
+To remove Dreamliner: `graphify uninstall` (add `--purge` to also delete `graphify-out/`).
 
 ---
 
@@ -578,7 +522,7 @@ These are only needed for **headless / CI extraction** (`graphify extract`). Whe
 
 - **Code files** — processed locally via tree-sitter. Nothing leaves your machine. A code-only corpus requires no API key — `graphify extract` runs fully offline. On a mixed repo, add `--code-only` to index just the code and skip the docs/PDFs/images that would otherwise need an LLM.
 - **Video / audio** — transcribed locally with faster-whisper. Nothing leaves your machine.
-- **Docs, PDFs, images** — sent to your AI assistant for semantic extraction (via the `/graphify` skill, using whatever model your IDE session runs). Headless `graphify extract` requires `GEMINI_API_KEY` / `GOOGLE_API_KEY` (Gemini), `MOONSHOT_API_KEY` (Kimi), `ANTHROPIC_API_KEY` (Claude), `OPENAI_API_KEY` (OpenAI), `DEEPSEEK_API_KEY` (DeepSeek), a running Ollama instance (`OLLAMA_BASE_URL`), AWS credentials via the standard provider chain (Bedrock - no API key needed, uses IAM), or the `claude` CLI binary (Claude Code - no API key needed, uses your Claude subscription). The `--dedup-llm` flag uses the same key.
+- **Docs, PDFs, images** — sent to your AI assistant for semantic extraction (via the `$dreamliner` skill in Codex, using whatever model your session runs). Headless `graphify extract` requires `GEMINI_API_KEY` / `GOOGLE_API_KEY` (Gemini), `MOONSHOT_API_KEY` (Kimi), `ANTHROPIC_API_KEY` (Claude), `OPENAI_API_KEY` (OpenAI), `DEEPSEEK_API_KEY` (DeepSeek), a running Ollama instance (`OLLAMA_BASE_URL`), AWS credentials via the standard provider chain (Bedrock - no API key needed, uses IAM), or the `claude` CLI binary (no API key needed, uses a Claude subscription). The `--dedup-llm` flag uses the same key.
 - **Data residency** — `graphify extract` auto-detects which provider to use based on which API key is set (priority: Gemini → Kimi → Claude → OpenAI → DeepSeek → Azure → Bedrock → Ollama). For code with data-residency requirements, use `--backend ollama` (fully local) or pass an explicit `--backend` flag. Kimi (`MOONSHOT_API_KEY`) routes to Moonshot AI servers in China.
 - **No telemetry**, no usage tracking, no analytics.
 - **Query logging** — every `graphify query`, `graphify path`, `graphify explain`, and MCP `query_graph` call is logged to `~/.cache/graphify-queries.log` in JSON Lines format (timestamp, question, corpus, nodes returned, duration). Full subgraph responses are **not** stored by default. Set `GRAPHIFY_QUERY_LOG_DISABLE=1` to opt out, or `GRAPHIFY_QUERY_LOG=/dev/null` to silence without disabling the code path.
@@ -610,8 +554,8 @@ pip uninstall graphifyy                                    # or remove the old s
 **`python -m graphify` works but `graphify` command doesn't**
 Your shell's `PATH` doesn't include the bin directory the command was installed to. Prefer `uv tool install` / `pipx install` over plain `pip`, then run `uv tool update-shell` / `pipx ensurepath` and open a new terminal (see the install notes above).
 
-**`/graphify .` causes "path not recognized" in PowerShell**
-PowerShell treats a leading `/` as a path separator. Use `graphify .` (no slash) on Windows.
+**`$dreamliner .` vs `graphify .` in PowerShell**
+Use `graphify .` in a terminal. In Codex the skill invoke is `$dreamliner .`.
 
 **Graph has fewer nodes after `--update` or rebuild**
 If a refactor deleted files, the old nodes linger. Pass `--force` (or set `GRAPHIFY_FORCE=1`) to overwrite even when the rebuild has fewer nodes.
@@ -669,47 +613,44 @@ uv tool upgrade graphifyy
 graphify install  # overwrites the skill file
 ```
 
-**Claude Code prompt cache invalidated after every `graphify extract`**
-Graphify writes output files (`graph.json`, `graphify-out/`) into the workspace. If those paths aren't ignored, every write invalidates Claude Code's prompt cache, forcing a full re-upload at cache-write rates on the next turn. Add them to `.claudeignore`:
-```text
-# .claudeignore
-graph.json
-graphify-out/
-```
+**Codex ignores `$dreamliner` after install**
+Confirm `codex --version` works, then set `multi_agent = true` under `[features]` in `~/.codex/config.toml` and restart Codex. Re-run `graphify install`.
 
 ---
 
 ## Full command reference
 
+In Codex, invoke the skill as `$dreamliner`. In a terminal, the CLI is still `graphify`.
+
 ```
-/graphify                          # run on current directory
-/graphify ./raw                    # run on a specific folder
-/graphify ./raw --mode deep        # more aggressive relationship extraction
+$dreamliner                          # run on current directory
+$dreamliner ./raw                    # run on a specific folder
+$dreamliner ./raw --mode deep        # more aggressive relationship extraction
 graphify extract ./raw --code-only # index code only — local AST, no API key (skips docs/PDFs/images); an `extract` flag, not a skill flag
-/graphify ./raw --update           # re-extract only changed files
-/graphify ./raw --directed         # preserve edge direction
-/graphify ./raw --cluster-only     # rerun clustering on existing graph
-/graphify ./raw --no-viz           # skip HTML visualization
-/graphify ./raw --obsidian         # generate Obsidian vault
-/graphify ./raw --obsidian --obsidian-dir ~/vault  # write into an existing vault (never overwrites your own notes or .obsidian config)
-/graphify ./raw --wiki             # build agent-crawlable markdown wiki
-/graphify ./raw --svg              # export graph.svg
-/graphify ./raw --graphml          # export for Gephi / yEd
-/graphify ./raw --neo4j            # generate cypher.txt for Neo4j
-/graphify ./raw --neo4j-push bolt://localhost:7687
-/graphify ./raw --falkordb         # generate cypher.txt for FalkorDB
-/graphify ./raw --falkordb-push falkordb://localhost:6379
-/graphify ./raw --watch            # auto-sync as files change
-/graphify ./raw --mcp              # start MCP stdio server
+$dreamliner ./raw --update           # re-extract only changed files
+$dreamliner ./raw --directed         # preserve edge direction
+$dreamliner ./raw --cluster-only     # rerun clustering on existing graph
+$dreamliner ./raw --no-viz           # skip HTML visualization
+$dreamliner ./raw --obsidian         # generate Obsidian vault
+$dreamliner ./raw --obsidian --obsidian-dir ~/vault  # write into an existing vault (never overwrites your own notes or .obsidian config)
+$dreamliner ./raw --wiki             # build agent-crawlable markdown wiki
+$dreamliner ./raw --svg              # export graph.svg
+$dreamliner ./raw --graphml          # export for Gephi / yEd
+$dreamliner ./raw --neo4j            # generate cypher.txt for Neo4j
+$dreamliner ./raw --neo4j-push bolt://localhost:7687
+$dreamliner ./raw --falkordb         # generate cypher.txt for FalkorDB
+$dreamliner ./raw --falkordb-push falkordb://localhost:6379
+$dreamliner ./raw --watch            # auto-sync as files change
+$dreamliner ./raw --mcp              # start MCP stdio server
 
-/graphify add https://arxiv.org/abs/1706.03762
-/graphify add <video-url>
-/graphify add https://... --author "Name" --contributor "Name"
+$dreamliner add https://arxiv.org/abs/1706.03762
+$dreamliner add <video-url>
+$dreamliner add https://... --author "Name" --contributor "Name"
 
-/graphify query "what connects attention to the optimizer?"
-/graphify query "..." --dfs --budget 1500
-/graphify path "DigestAuth" "Response"
-/graphify explain "SwinTransformer"
+$dreamliner query "what connects attention to the optimizer?"
+$dreamliner query "..." --dfs --budget 1500
+$dreamliner path "DigestAuth" "Response"
+$dreamliner explain "SwinTransformer"
 
 graphify save-result --question "Q" --answer "A" --nodes Foo Bar --outcome useful   # record how a Q&A turned out (work memory; outcome ∈ useful|dead_end|corrected)
 graphify reflect                   # aggregate graphify-out/memory/ outcomes into reflections/LESSONS.md
@@ -727,45 +668,12 @@ graphify hook install              # post-commit + post-checkout hooks
 graphify hook uninstall
 graphify hook status
 
-# always-on assistant instructions - platform-specific
-graphify claude install            # CLAUDE.md + PreToolUse hook (Claude Code)
-graphify claude uninstall
-graphify codebuddy install         # CODEBUDDY.md + PreToolUse hook (CodeBuddy)
-graphify codebuddy uninstall
-graphify codex install             # AGENTS.md + PreToolUse hook in .codex/hooks.json (Codex)
-graphify opencode install          # AGENTS.md + tool.execute.before plugin (OpenCode)
-graphify kilo install              # native Kilo skill + /graphify command + AGENTS.md + .kilo plugin
-graphify kilo uninstall
-graphify cursor install            # .cursor/rules/graphify.mdc (Cursor)
-graphify cursor uninstall
-graphify gemini install            # GEMINI.md + BeforeTool hook (Gemini CLI)
-graphify gemini uninstall
-graphify copilot install           # skill file (GitHub Copilot CLI)
-graphify copilot uninstall
-graphify aider install             # AGENTS.md (Aider)
-graphify aider uninstall
-graphify claw install              # AGENTS.md (OpenClaw)
-graphify claw uninstall
-graphify droid install             # AGENTS.md (Factory Droid)
-graphify droid uninstall
-graphify trae install              # AGENTS.md (Trae)
-graphify trae uninstall
-graphify trae-cn install           # AGENTS.md (Trae CN)
-graphify trae-cn uninstall
-graphify hermes install             # AGENTS.md + ~/.hermes/skills/ (Hermes)
-graphify hermes uninstall
-graphify amp install               # skill file (Amp)
-graphify amp uninstall
-graphify agents install            # ~/.agents/skills/ + AGENTS.md (cross-framework; alias: graphify skills)
-graphify agents uninstall
-graphify kiro install               # .kiro/skills/ + .kiro/steering/graphify.md (Kiro IDE/CLI)
-graphify kiro uninstall
-graphify pi install                # skill file (Pi coding agent)
-graphify pi uninstall
-graphify devin install             # skill file + .windsurf/rules/graphify.md (Devin CLI)
-graphify devin uninstall
-graphify antigravity install       # .agents/rules + .agents/workflows (Google Antigravity)
-graphify antigravity uninstall
+# always-on Codex instructions (Dreamliner first-class path)
+graphify install                   # ~/.codex/skills + Codex skill
+graphify install --platform codex
+graphify install --project         # project-scoped .codex/skills + AGENTS.md
+graphify codex install             # write Dreamliner section to AGENTS.md
+graphify codex uninstall
 
 graphify extract ./docs                        # headless LLM extraction for CI (no IDE needed)
 graphify extract ./docs --backend gemini       # explicit backend: gemini, kimi, claude, openai, deepseek, ollama, bedrock, or claude-cli

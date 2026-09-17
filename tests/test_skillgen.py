@@ -272,11 +272,19 @@ def test_descriptions_are_unified():
     line) were collapsed into a single discovery-tuned line that leads with the
     use-condition. Every split host and both monoliths must carry it verbatim,
     and none of the old wording may survive.
+
+    Codex is the Dreamliner exception: its description names Dreamliner and
+    ``$dreamliner`` so Codex invoke is not leftover Claude ``/graphify`` branding.
     """
     expected_line = f'description: "{UNIFIED_DESCRIPTION}"'
     platforms = gen.load_platforms()
     for key, p in platforms.items():
         body = gen.render(p)[0].content
+        if key == "codex":
+            assert "name: dreamliner" in body
+            assert "$dreamliner" in body
+            assert "Dreamliner" in body
+            continue
         assert expected_line in body, f"[{key}] missing the unified description line"
         # None of the drifted v8 wording may survive on any platform.
         assert "Provides persistent graph with god nodes" not in body, f"[{key}] kept old wording"
@@ -349,8 +357,10 @@ def test_every_platform_query_has_expansion_and_fallback():
         q = refs["query.md"]
         assert "Constrained query expansion" in q
         assert "If the CLI is unavailable" in q
-        assert "## For /graphify path" in q
-        assert "## For /graphify explain" in q
+        path_heading = "## For $dreamliner path" if key == "codex" else "## For /graphify path"
+        explain_heading = "## For $dreamliner explain" if key == "codex" else "## For /graphify explain"
+        assert path_heading in q
+        assert explain_heading in q
 
 
 # --- cross-shell parity for powershell hosts (#2528) ---------------------------
@@ -732,8 +742,8 @@ def test_always_on_roundtrip_is_byte_faithful():
     contracts silently change.
     """
     # The guard passes with zero problems: every always-on block reproduces its
-    # frozen baseline, with the agents-md block allowed exactly the #1530
-    # sanctioned substitution recorded in gen.ALWAYS_ON_SANCTIONED_EDITS.
+    # frozen baseline after the sanctioned substitutions in
+    # gen.ALWAYS_ON_SANCTIONED_EDITS (#1530 plus Dreamliner / Codex branding).
     problems = gen.always_on_roundtrip()
     assert problems == []
 
@@ -750,17 +760,21 @@ def test_always_on_roundtrip_is_byte_faithful():
         "When the user types `/graphify`, use the installed graphify skill or instructions "
         "before doing anything else."
     )
-    # The sanctioned-edit registry holds exactly this single old->new substitution.
-    assert gen.ALWAYS_ON_SANCTIONED_EDITS["_AGENTS_MD_SECTION"] == (
-        (old_instruction, new_instruction),
+    # The sanctioned-edit registry starts with the #1530 host-generic substitution.
+    assert gen.ALWAYS_ON_SANCTIONED_EDITS["_AGENTS_MD_SECTION"][0] == (
+        old_instruction,
+        new_instruction,
     )
     baseline_agents = gen._always_on_constants(gen.ALWAYS_ON_BASELINE_REF)["_AGENTS_MD_SECTION"]
-    # The ONLY divergence from the frozen baseline is the sanctioned sentence —
-    # any other byte drift would have surfaced as a problem above.
+    expected = baseline_agents
+    for old, new in gen.ALWAYS_ON_SANCTIONED_EDITS["_AGENTS_MD_SECTION"]:
+        expected = expected.replace(old, new)
     assert old_instruction in baseline_agents
-    assert baseline_agents.replace(old_instruction, new_instruction) == rendered_agents
+    assert expected == rendered_agents
     assert "`skill` tool" not in rendered_agents
     assert 'skill: "graphify"' not in rendered_agents
+    assert "$dreamliner" in rendered_agents
+    assert "Dreamliner" in rendered_agents
 
 
 def test_extracted_constants_equal_the_packaged_always_on_files():
@@ -937,7 +951,7 @@ def test_claude_flavored_hosts_keep_their_hooks_text_unchanged():
     droid's v8 dispatch never had the Trae caveat and its hooks section names
     CLAUDE.md; restoring trae must not bleed into droid or any other host.
     """
-    for key in ("claude", "droid", "codex", "windows", "kilo", "vscode"):
+    for key in ("claude", "droid", "windows", "kilo", "vscode"):
         core, refs = _platform_artifacts(key)
         hooks = refs["hooks.md"]
         assert "graphify claude install" in hooks, f"[{key}] lost the claude install command"

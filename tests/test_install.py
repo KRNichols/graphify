@@ -216,17 +216,21 @@ def test_install_opencode(tmp_path):
     ).exists()
 
 
-def test_install_positional_platform_opencode(tmp_path, monkeypatch):
+def test_install_positional_platform_opencode_is_gated(tmp_path, monkeypatch, capsys):
     from graphify.__main__ import main
     monkeypatch.chdir(tmp_path)
     monkeypatch.setattr(sys, "argv", ["graphify", "install", "opencode"])
     with patch("graphify.__main__.Path.home", return_value=tmp_path):
-        main()
-    assert (tmp_path / ".config" / "opencode" / "skills" / "graphify" / "SKILL.md").exists()
-    assert not (tmp_path / ".claude" / "skills" / "graphify" / "SKILL.md").exists()
+        with pytest.raises(SystemExit) as exc:
+            main()
+    assert exc.value.code == 2
+    err = capsys.readouterr().err
+    assert "Dreamliner is Codex-only" in err
+    assert "install --platform codex" in err
+    assert not (tmp_path / ".config" / "opencode" / "skills" / "graphify" / "SKILL.md").exists()
 
 
-def test_install_project_claude_writes_project_scope(tmp_path, monkeypatch, capsys):
+def test_install_project_default_writes_codex_scope(tmp_path, monkeypatch, capsys):
     from graphify.__main__ import main
     home = tmp_path / "home"
     project = tmp_path / "project"
@@ -235,12 +239,12 @@ def test_install_project_claude_writes_project_scope(tmp_path, monkeypatch, caps
     monkeypatch.setattr(sys, "argv", ["graphify", "install", "--project"])
     with patch("graphify.__main__.Path.home", return_value=home):
         main()
-    assert (project / ".claude" / "skills" / "graphify" / "SKILL.md").exists()
-    assert (project / ".claude" / "CLAUDE.md").exists()
-    assert not (home / ".claude" / "skills" / "graphify" / "SKILL.md").exists()
-    assert ".claude/skills/graphify/SKILL.md" in (project / ".claude" / "CLAUDE.md").read_text()
-    assert "~/.claude/skills/graphify/SKILL.md" not in (project / ".claude" / "CLAUDE.md").read_text()
-    assert "git add .claude/" in capsys.readouterr().out
+    assert (project / ".codex" / "skills" / "graphify" / "SKILL.md").exists()
+    assert (project / "AGENTS.md").exists()
+    assert (project / ".codex" / "hooks.json").exists()
+    assert not (home / ".codex" / "skills" / "graphify" / "SKILL.md").exists()
+    assert "$dreamliner" in (project / "AGENTS.md").read_text()
+    assert "git add" in capsys.readouterr().out
 
 
 def test_install_project_codex_writes_skill_and_agents(tmp_path, monkeypatch):
@@ -258,30 +262,15 @@ def test_install_project_codex_writes_skill_and_agents(tmp_path, monkeypatch):
     assert not (home / ".codex" / "skills" / "graphify" / "SKILL.md").exists()
 
 
-def test_claude_subcommand_project_install_and_uninstall_are_project_scoped(tmp_path, monkeypatch):
+def test_claude_subcommand_is_gated(tmp_path, monkeypatch, capsys):
     from graphify.__main__ import main
-    home = tmp_path / "home"
-    project = tmp_path / "project"
-    project.mkdir()
-    user_skill = home / ".claude" / "skills" / "graphify" / "SKILL.md"
-    user_skill.parent.mkdir(parents=True)
-    user_skill.write_text("user skill")
-    monkeypatch.chdir(project)
-    with patch("graphify.__main__.Path.home", return_value=home):
-        monkeypatch.setattr(sys, "argv", ["graphify", "claude", "install", "--project"])
-        main()
-        assert (project / ".claude" / "skills" / "graphify" / "SKILL.md").exists()
-        assert (project / ".claude" / "CLAUDE.md").exists()
-        assert (project / "CLAUDE.md").exists()
-        assert user_skill.exists()
-
-        monkeypatch.setattr(sys, "argv", ["graphify", "claude", "uninstall", "--project"])
-        main()
-
-    assert user_skill.exists()
-    assert not (project / ".claude" / "skills" / "graphify" / "SKILL.md").exists()
-    assert not (project / ".claude" / "CLAUDE.md").exists()
-    assert not (project / "CLAUDE.md").exists()
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr(sys, "argv", ["graphify", "claude", "install", "--project"])
+    with patch("graphify.__main__.Path.home", return_value=tmp_path):
+        with pytest.raises(SystemExit) as exc:
+            main()
+    assert exc.value.code == 2
+    assert "Dreamliner is Codex-only" in capsys.readouterr().err
 
 
 def test_codex_subcommand_project_install_and_uninstall_are_project_scoped(tmp_path, monkeypatch):
@@ -312,17 +301,15 @@ def test_codex_subcommand_project_install_and_uninstall_are_project_scoped(tmp_p
     assert "graphify" not in hooks_path.read_text()
 
 
-def test_antigravity_install_project_writes_project_skill(tmp_path, monkeypatch):
+def test_antigravity_subcommand_is_gated(tmp_path, monkeypatch, capsys):
     from graphify.__main__ import main
-    home = tmp_path / "home"
-    project = tmp_path / "project"
-    project.mkdir()
-    monkeypatch.chdir(project)
+    monkeypatch.chdir(tmp_path)
     monkeypatch.setattr(sys, "argv", ["graphify", "antigravity", "install", "--project"])
-    with patch("graphify.__main__.Path.home", return_value=home):
-        main()
-    assert (project / ".agents" / "skills" / "graphify" / "SKILL.md").exists()
-    assert not (home / ".agents" / "skills" / "graphify" / "SKILL.md").exists()
+    with patch("graphify.__main__.Path.home", return_value=tmp_path):
+        with pytest.raises(SystemExit) as exc:
+            main()
+    assert exc.value.code == 2
+    assert "Dreamliner is Codex-only" in capsys.readouterr().err
 
 
 def test_install_help_does_not_install_default(tmp_path, monkeypatch, capsys):
@@ -333,9 +320,10 @@ def test_install_help_does_not_install_default(tmp_path, monkeypatch, capsys):
         main()
     out = capsys.readouterr().out
     assert "Usage: graphify install" in out
-    assert "opencode" in out
+    assert "codex" in out
     assert not (tmp_path / ".claude").exists()
     assert not (tmp_path / ".config").exists()
+    assert not (tmp_path / ".codex").exists()
 
 
 def test_install_claw(tmp_path):
@@ -382,21 +370,25 @@ def test_codex_skill_uses_graphify_with_existing_graph():
     The progressive-disclosure split drops codex's old monolith-only "dirty
     graph output" blurb; the graph-first intent now lives in the shared core's
     fast-path block, which jumps straight to the query flow when a graph exists.
+    Dreamliner invoke is ``$dreamliner`` (not leftover ``/graphify``).
     """
     import graphify
     skill = (Path(graphify.__file__).parent / "skill-codex.md").read_text()
     assert "Fast path — existing graph" in skill
-    assert "skip Steps 1–5 entirely and jump straight to `## For /graphify query`" in skill
+    assert "skip Steps 1–5 entirely and jump straight to `## For $dreamliner query`" in skill
     assert "graphify query" in skill
-    assert "graphify explain" in skill
-    assert "graphify path" in skill
+    assert "$dreamliner explain" in skill or "graphify explain" in skill
+    assert "$dreamliner path" in skill or "graphify path" in skill
+    assert "$dreamliner" in skill
+    assert "name: dreamliner" in skill
 
 
 def test_codex_agents_install_mentions_dirty_graph_output(tmp_path):
     _agents_install(tmp_path, "codex")
     content = (tmp_path / "AGENTS.md").read_text()
     assert "Dirty graphify-out/ files are expected" in content
-    assert "not a reason to skip graphify" in content
+    assert "not a reason to skip Dreamliner" in content
+    assert "$dreamliner" in content
 
 
 def test_opencode_skill_contains_mention():
@@ -634,7 +626,7 @@ def test_uninstall_project_without_platform_removes_project_installs(tmp_path, m
 
 
 def test_antigravity_uninstall_project_removes_project_skill_only(tmp_path, monkeypatch):
-    from graphify.__main__ import main
+    from graphify.install import _antigravity_install, _project_uninstall
     home = tmp_path / "home"
     project = tmp_path / "project"
     project.mkdir()
@@ -643,25 +635,23 @@ def test_antigravity_uninstall_project_removes_project_skill_only(tmp_path, monk
     global_skill.parent.mkdir(parents=True)
     global_skill.write_text("global skill")
     monkeypatch.chdir(project)
-    with patch("graphify.__main__.Path.home", return_value=home):
-        monkeypatch.setattr(sys, "argv", ["graphify", "antigravity", "install", "--project"])
-        main()
-        monkeypatch.setattr(sys, "argv", ["graphify", "antigravity", "uninstall", "--project"])
-        main()
+    with patch("graphify.install.Path.home", return_value=home):
+        from graphify.install import _project_install
+        _project_install("antigravity", project)
+        _project_uninstall("antigravity", project)
     assert global_skill.exists(), "project uninstall must not touch global skill"
     assert not (project / ".agents" / "skills" / "graphify" / "SKILL.md").exists()
 
 
 def test_antigravity_global_install_writes_gemini_config_skills(tmp_path, monkeypatch):
-    """Global `graphify antigravity install` must write to ~/.gemini/config/skills/ (#1079)."""
-    from graphify.__main__ import main
+    """Library antigravity install must write to ~/.gemini/config/skills/ (#1079)."""
+    from graphify.install import _antigravity_install
     home = tmp_path / "home"
     project = tmp_path / "project"
     project.mkdir()
     monkeypatch.chdir(project)
-    with patch("graphify.__main__.Path.home", return_value=home):
-        monkeypatch.setattr(sys, "argv", ["graphify", "antigravity", "install"])
-        main()
+    with patch("graphify.install.Path.home", return_value=home):
+        _antigravity_install(project)
     global_skill = home / ".gemini" / "config" / "skills" / "graphify" / "SKILL.md"
     wrong_skill = home / ".agents" / "skills" / "graphify" / "SKILL.md"
     assert global_skill.exists(), f"skill missing from correct global path {global_skill}"
@@ -672,19 +662,17 @@ def test_antigravity_global_install_writes_gemini_config_skills(tmp_path, monkey
 
 
 def test_antigravity_global_uninstall_removes_gemini_config_skill(tmp_path, monkeypatch):
-    """Global `graphify antigravity uninstall` must remove from ~/.gemini/config/skills/ (#1079)."""
-    from graphify.__main__ import main
+    """Library antigravity uninstall must remove from ~/.gemini/config/skills/ (#1079)."""
+    from graphify.install import _antigravity_install, _antigravity_uninstall
     home = tmp_path / "home"
     project = tmp_path / "project"
     project.mkdir()
     monkeypatch.chdir(project)
-    with patch("graphify.__main__.Path.home", return_value=home):
-        monkeypatch.setattr(sys, "argv", ["graphify", "antigravity", "install"])
-        main()
+    with patch("graphify.install.Path.home", return_value=home):
+        _antigravity_install(project)
         global_skill = home / ".gemini" / "config" / "skills" / "graphify" / "SKILL.md"
         assert global_skill.exists(), "precondition: skill must exist before uninstall"
-        monkeypatch.setattr(sys, "argv", ["graphify", "antigravity", "uninstall"])
-        main()
+        _antigravity_uninstall(project)
     assert not global_skill.exists(), f"skill not removed from {global_skill} after uninstall"
     # workspace files also cleaned up
     assert not (project / ".agents" / "rules" / "graphify.md").exists()
@@ -1159,17 +1147,16 @@ def test_gemini_uninstall_noop_if_not_installed(tmp_path):
 
 
 def test_amp_user_install_lands_in_config_agents(tmp_path, monkeypatch):
-    """`graphify amp install` (user scope) must drop the skill into an Amp search
+    """Library amp install (user scope) must drop the skill into an Amp search
     root: ~/.config/agents/skills, not the old ~/.amp/skills."""
-    from graphify.__main__ import main
+    from graphify.install import _amp_install
 
     home = tmp_path / "home"
     project = tmp_path / "project"
     project.mkdir()
     monkeypatch.chdir(project)
-    monkeypatch.setattr(sys, "argv", ["graphify", "amp", "install"])
-    with patch("graphify.__main__.Path.home", return_value=home):
-        main()
+    with patch("graphify.install.Path.home", return_value=home):
+        _amp_install(project)
 
     correct = home / ".config" / "agents" / "skills" / "graphify" / "SKILL.md"
     old = home / ".amp" / "skills" / "graphify" / "SKILL.md"
@@ -1181,7 +1168,7 @@ def test_amp_user_install_lands_in_config_agents(tmp_path, monkeypatch):
 
 def test_amp_install_cleans_legacy_amp_skills_dir(tmp_path, monkeypatch):
     """A pre-fix ~/.amp/skills/graphify install is removed on the next install."""
-    from graphify.__main__ import main
+    from graphify.install import _amp_install
 
     home = tmp_path / "home"
     project = tmp_path / "project"
@@ -1190,30 +1177,26 @@ def test_amp_install_cleans_legacy_amp_skills_dir(tmp_path, monkeypatch):
     legacy.mkdir(parents=True)
     (legacy / "SKILL.md").write_text("old amp skill", encoding="utf-8")
     monkeypatch.chdir(project)
-    monkeypatch.setattr(sys, "argv", ["graphify", "amp", "install"])
-    with patch("graphify.__main__.Path.home", return_value=home):
-        main()
+    with patch("graphify.install.Path.home", return_value=home):
+        _amp_install(project)
 
     assert not legacy.exists(), "legacy ~/.amp/skills/graphify should be cleaned up"
     assert (home / ".config" / "agents" / "skills" / "graphify" / "SKILL.md").exists()
 
 
 def test_amp_user_uninstall_removes_skill_and_agents(tmp_path, monkeypatch):
-    """`graphify amp uninstall` removes the user-scope skill and AGENTS.md section."""
-    from graphify.__main__ import main
+    """Library amp uninstall removes the user-scope skill and AGENTS.md section."""
+    from graphify.install import _amp_install, _amp_uninstall
 
     home = tmp_path / "home"
     project = tmp_path / "project"
     project.mkdir()
     monkeypatch.chdir(project)
-    with patch("graphify.__main__.Path.home", return_value=home):
-        monkeypatch.setattr(sys, "argv", ["graphify", "amp", "install"])
-        main()
+    with patch("graphify.install.Path.home", return_value=home):
+        _amp_install(project)
         skill = home / ".config" / "agents" / "skills" / "graphify" / "SKILL.md"
         assert skill.exists()
-
-        monkeypatch.setattr(sys, "argv", ["graphify", "amp", "uninstall"])
-        main()
+        _amp_uninstall(project)
 
     assert not skill.exists()
     assert not (home / ".config" / "agents" / "skills").exists()
@@ -1222,15 +1205,14 @@ def test_amp_user_uninstall_removes_skill_and_agents(tmp_path, monkeypatch):
 
 def test_amp_project_install_lands_in_dot_agents(tmp_path, monkeypatch):
     """Project-scope amp install lands in .agents/skills, an Amp project search root."""
-    from graphify.__main__ import main
+    from graphify.install import _project_install
 
     home = tmp_path / "home"
     project = tmp_path / "project"
     project.mkdir()
     monkeypatch.chdir(project)
-    monkeypatch.setattr(sys, "argv", ["graphify", "amp", "install", "--project"])
-    with patch("graphify.__main__.Path.home", return_value=home):
-        main()
+    with patch("graphify.install.Path.home", return_value=home):
+        _project_install("amp", project)
 
     assert (project / ".agents" / "skills" / "graphify" / "SKILL.md").exists()
     assert not (project / ".amp" / "skills" / "graphify" / "SKILL.md").exists()
@@ -1242,19 +1224,21 @@ def test_amp_project_install_lands_in_dot_agents(tmp_path, monkeypatch):
 def test_uninstall_all_removes_amp_user_skill(tmp_path, monkeypatch):
     """The user-scope `graphify uninstall` enumeration removes the amp skill."""
     from graphify.__main__ import main
+    from graphify.install import _amp_install
 
     home = tmp_path / "home"
     project = tmp_path / "project"
     project.mkdir()
     monkeypatch.chdir(project)
-    with patch("graphify.__main__.Path.home", return_value=home):
-        monkeypatch.setattr(sys, "argv", ["graphify", "amp", "install"])
-        main()
+    with patch("graphify.install.Path.home", return_value=home):
+        _amp_install(project)
         skill = home / ".config" / "agents" / "skills" / "graphify" / "SKILL.md"
         assert skill.exists()
 
-        monkeypatch.setattr(sys, "argv", ["graphify", "uninstall"])
-        main()
+    with patch("graphify.__main__.Path.home", return_value=home):
+        with patch("graphify.install.Path.home", return_value=home):
+            monkeypatch.setattr(sys, "argv", ["graphify", "uninstall"])
+            main()
 
     assert not skill.exists()
 
@@ -1367,11 +1351,11 @@ def _hook_commands(text: str) -> list:
 
 
 def _run_project_install(project, home, platform):
-    from graphify.__main__ import main
+    """Drive the library project installer (CLI is Codex-gated)."""
+    from graphify.install import _project_install
 
-    with patch("graphify.__main__.Path.home", return_value=home):
-        with patch("sys.argv", ["graphify", "install", "--project", "--platform", platform]):
-            main()
+    with patch("graphify.install.Path.home", return_value=home):
+        _project_install(platform, project)
 
 
 @pytest.mark.parametrize("platform", sorted(_PROJECT_HOOK_FILES))
@@ -1406,11 +1390,17 @@ def test_user_profile_install_still_resolves_absolute_path(tmp_path, monkeypatch
     monkeypatch.chdir(project)
     monkeypatch.setattr("shutil.which", lambda _name: r"C:\Users\installer\graphify.EXE")
 
-    from graphify.__main__ import main
+    from graphify.install import _agents_install, claude_install, gemini_install
 
-    with patch("graphify.__main__.Path.home", return_value=home):
-        with patch("sys.argv", ["graphify", platform, "install"]):
-            main()
+    with patch("graphify.install.Path.home", return_value=home):
+        if platform == "codex":
+            _agents_install(project, "codex")
+        elif platform == "claude":
+            claude_install(project)
+        elif platform == "gemini":
+            gemini_install(project)
+        else:
+            raise AssertionError(platform)
 
     commands = _hook_commands((project / _PROJECT_HOOK_FILES[platform]).read_text(encoding="utf-8"))
     assert commands, f"{platform} install registered no hook command"
@@ -1437,7 +1427,7 @@ def test_project_install_is_idempotent(tmp_path, monkeypatch, platform):
 
 def test_project_uninstall_removes_the_bare_hook_command(tmp_path, monkeypatch):
     """The uninstall filter matches on "graphify", so a bare command still goes."""
-    from graphify.__main__ import main
+    from graphify.install import _project_uninstall
 
     home = tmp_path / "home"
     project = tmp_path / "project"
@@ -1449,8 +1439,7 @@ def test_project_uninstall_removes_the_bare_hook_command(tmp_path, monkeypatch):
     settings = project / ".claude" / "settings.json"
     assert any("hook-guard" in c for c in _hook_commands(settings.read_text(encoding="utf-8")))
 
-    with patch("graphify.__main__.Path.home", return_value=home):
-        with patch("sys.argv", ["graphify", "claude", "uninstall", "--project"]):
-            main()
+    with patch("graphify.install.Path.home", return_value=home):
+        _project_uninstall("claude", project)
 
     assert not [c for c in _hook_commands(settings.read_text(encoding="utf-8")) if "graphify" in c]
