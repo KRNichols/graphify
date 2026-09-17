@@ -540,6 +540,7 @@ def _run_cli() -> None:
         print("    --graph <path>          path to graph.json (default graphify-out/graph.json)")
         print("  explain \"X\"             plain-language explanation of a node and its neighbors")
         print("    --graph <path>          path to graph.json (default graphify-out/graph.json)")
+        print("  check                   diagnose Codex/install failures (PATH, config, skill, sidecar, graph)")
         print("  diagnose multigraph    report same-endpoint edge collapse risk in graph.json")
         print("    --graph <path>          path to graph/extraction JSON")
         print("                            (default graphify-out/graph.json)")
@@ -748,7 +749,16 @@ def _run_cli() -> None:
 
     if dispatch_install_cli(cmd):
         return
-    dispatch_command(cmd)
+    try:
+        dispatch_command(cmd)
+    except ModuleNotFoundError as exc:
+        # hook-check/hook-guard must stay silent and exit 0 — a diagnosis here
+        # would break every Codex Bash tool call.
+        if cmd in {"hook-check", "hook-guard"}:
+            sys.exit(0)
+        from graphify.errors import diagnose_import_error, die
+
+        die(diagnose_import_error(exc))
 
 
 if __name__ == "__main__":

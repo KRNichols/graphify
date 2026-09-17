@@ -728,6 +728,10 @@ def install(platform: str = "claude", *, project: bool = False, project_dir: Pat
     if project:
         _print_project_git_add_hint([_project_scope_root(skill_dst, project_dir)])
 
+    if platform == "codex":
+        from graphify.errors import report_codex_install
+        report_codex_install(project=project, project_dir=project_dir, skill_dst=skill_dst)
+
     print()
     print("Done. Open your AI coding assistant and type:")
     print()
@@ -1567,6 +1571,13 @@ def _agents_install(project_dir: Path, platform: str, project: bool = False) -> 
 
     if platform == "codex":
         _install_codex_hook(project_dir or Path("."), project=project)
+        from graphify.errors import expected_codex_skill_path, report_codex_install
+        _pd = project_dir or Path(".")
+        report_codex_install(
+            project=project,
+            project_dir=_pd,
+            skill_dst=expected_codex_skill_path(project=project, project_dir=_pd),
+        )
     elif platform == "opencode":
         _install_opencode_plugin(project_dir or Path("."))
     elif platform == "kilo":
