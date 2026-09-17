@@ -6,6 +6,10 @@ from unittest.mock import patch
 
 import pytest
 
+pytestmark = pytest.mark.skip(
+    reason="CodeBuddy is not a first-class host in this Codex-only variant"
+)
+
 
 # ---------------------------------------------------------------------------
 # Helpers

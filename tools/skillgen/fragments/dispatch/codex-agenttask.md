@@ -1,8 +1,10 @@
 **Step B2 - Dispatch ALL subagents in a single message (Codex)**
 
-> **Codex platform:** Uses `spawn_agent` + `wait_agent` + `close_agent` instead of the Agent tool.
+> **Codex:** Uses `spawn_agent` + `wait_agent` + `close_agent`.
 > Requires `multi_agent = true` under `[features]` in `~/.codex/config.toml`.
-> If `spawn_agent` is unavailable, tell the user to add that config and restart Codex.
+> If `spawn_agent` is unavailable, do **not** silently skip semantic extraction.
+> Tell the user: add `multi_agent = true` under `[features]` in `~/.codex/config.toml`, restart Codex, and retry.
+> A code-only corpus can continue without subagents (AST only) — write the empty semantic file and go to Part C.
 
 Call `spawn_agent` once per chunk — ALL in the same response so they run in parallel. Build the message by wrapping the extraction prompt in task-delegation framing:
 
@@ -15,7 +17,7 @@ After all agents are dispatched, collect results sequentially in memory:
 result = wait_agent(handle); close_agent(handle)   # repeat per handle
 ```
 
-Parse each result as JSON. Accumulate nodes/edges/hyperedges across all results and write to `graphify-out/.graphify_semantic_new.json`. Codex collects in memory, so there are no per-chunk files on disk; the disk-based success checks in Step B3 do not apply — a chunk that returns invalid JSON is the failure signal instead.
+Parse each result as JSON. If a result is not valid JSON with `nodes` and `edges`, print a warning naming the chunk and skip it — do not abort unless more than half the chunks fail. Accumulate nodes/edges/hyperedges across valid results and write to `graphify-out/.graphify_semantic_new.json`. Codex collects in memory, so there are no per-chunk files on disk; the disk-based success checks in Step B3 do not apply — a chunk that returns invalid JSON is the failure signal instead.
 
 Subagent prompt template:
 

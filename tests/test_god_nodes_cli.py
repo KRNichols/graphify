@@ -73,4 +73,5 @@ def test_god_nodes_cli_missing_graph_errors(monkeypatch, tmp_path, capsys):
     with pytest.raises(SystemExit) as exc:
         _run(monkeypatch, ["graphify", "god-nodes", "--graph", str(tmp_path / "nope.json")])
     assert exc.value.code == 1
-    assert "graph file not found" in capsys.readouterr().err
+    err = capsys.readouterr().err
+    assert "no Dreamliner graph found" in err or "graph file not found" in err

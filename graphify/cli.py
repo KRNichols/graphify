@@ -20,8 +20,8 @@ _SEARCH_NUDGE = json.dumps({
         "hookEventName": "PreToolUse",
         "additionalContext": (
             'MANDATORY: graphify-out/graph.json exists. You MUST run '
-            '`graphify query "<question>"` before grepping raw files. Only grep '
-            'after graphify has oriented you, or to modify/debug specific lines.'
+            '`dreamliner query "<question>"` before grepping raw files. Only grep '
+            'after Dreamliner has oriented you, or to modify/debug specific lines.'
         ),
     }
 }, ensure_ascii=False, separators=(",", ":")) + "\n"
@@ -29,10 +29,10 @@ _READ_NUDGE = json.dumps({
     "hookSpecificOutput": {
         "hookEventName": "PreToolUse",
         "additionalContext": (
-            'MANDATORY: graphify-out/graph.json exists. You MUST run graphify '
-            'before reading source files. Use: `graphify query "<question>"` '
-            '(scoped subgraph), `graphify explain "<concept>"`, or '
-            '`graphify path "<A>" "<B>"`. Only read raw files after graphify has '
+            'MANDATORY: graphify-out/graph.json exists. You MUST run Dreamliner '
+            'before reading source files. Use: `dreamliner query "<question>"` '
+            '(scoped subgraph), `dreamliner explain "<concept>"`, or '
+            '`dreamliner path "<A>" "<B>"`. Only read raw files after Dreamliner has '
             'oriented you, or to modify/debug specific lines. This rule applies to '
             'subagents too — include it in every subagent prompt involving code '
             'exploration.'
@@ -44,8 +44,8 @@ _READ_NUDGE_STALE = json.dumps({
         "hookEventName": "PreToolUse",
         "additionalContext": (
             'graphify-out/graph.json exists but may be STALE for this file (the file '
-            'changed after the last build). Prefer `graphify query "<question>"` for '
-            'orientation, and run `graphify update` to refresh the graph. Reading the '
+            'changed after the last build). Prefer `dreamliner query "<question>"` for '
+            'orientation, and run `dreamliner update` to refresh the graph. Reading the '
             'file directly is fine.'
         ),
     }
@@ -59,9 +59,9 @@ _READ_DENY = json.dumps({
         "hookEventName": "PreToolUse",
         "permissionDecision": "deny",
         "permissionDecisionReason": (
-            'graphify strict mode: this project has a fresh knowledge graph that covers '
-            'this file. Run `graphify query "<your question>"` (or `graphify explain` / '
-            '`graphify path`) FIRST to orient yourself, then re-issue this Read — it '
+            'Dreamliner strict mode: this project has a fresh knowledge graph that covers '
+            'this file. Run `dreamliner query "<your question>"` (or `dreamliner explain` / '
+            '`dreamliner path`) FIRST to orient yourself, then re-issue this Read — it '
             'will be allowed. This block fires at most once per session; reading raw '
             'files to modify or debug specific lines is fine after one query. Apply the '
             'same rule in any subagent prompt that explores code.'
@@ -74,8 +74,8 @@ _HOOK_SOURCE_EXTS = (
     '.swift', '.php', '.scala', '.lua', '.sh', '.md', '.rst', '.txt', '.mdx',
 )
 _GEMINI_NUDGE_TEXT = (
-    'graphify: knowledge graph at graphify-out/. For focused questions, run '
-    '`graphify query "<question>"` (scoped subgraph, usually much smaller than '
+    'Dreamliner: knowledge graph at graphify-out/. For focused questions, run '
+    '`dreamliner query "<question>"` (scoped subgraph, usually much smaller than '
     'GRAPH_REPORT.md) instead of grepping raw files. Read GRAPH_REPORT.md only '
     'for broad architecture context.'
 )
@@ -83,6 +83,25 @@ _GEMINI_NUDGE_TEXT = (
 
 def _default_graph_path() -> str:
     return str(Path(_GRAPHIFY_OUT) / "graph.json")
+
+
+def _reject_unusable_graph(gp: Path, G=None, exc: BaseException | None = None) -> None:
+    """Exit with a Dreamliner-branded, actionable error for common graph failures."""
+    from graphify.brand import (
+        corrupt_graph_message,
+        empty_graph_message,
+        missing_graph_message,
+    )
+
+    if not gp.exists():
+        print(missing_graph_message(str(gp)), file=sys.stderr)
+        sys.exit(1)
+    if exc is not None:
+        print(corrupt_graph_message(str(gp), exc), file=sys.stderr)
+        sys.exit(1)
+    if G is not None and getattr(G, "number_of_nodes", lambda: 1)() == 0:
+        print(empty_graph_message(str(gp)), file=sys.stderr)
+        sys.exit(1)
 
 
 def _stamped_manifest_files(
@@ -1062,6 +1081,11 @@ def _reenter_main() -> None:
 
 
 def dispatch_command(cmd: str) -> None:
+    if cmd == "doctor":
+        from graphify.doctor import doctor
+
+        require_graph = "--graph" in sys.argv[2:]
+        sys.exit(doctor(require_graph=require_graph))
     if cmd == "provider":
         from graphify.llm import _custom_providers_path, BACKENDS
         import json as _json
@@ -1085,7 +1109,7 @@ def dispatch_command(cmd: str) -> None:
         elif subcmd == "show":
             name = sys.argv[3] if len(sys.argv) > 3 else ""
             if not name:
-                print("Usage: graphify provider show <name>", file=sys.stderr)
+                print("Usage: dreamliner provider show <name>", file=sys.stderr)
                 sys.exit(1)
             existing = {}
             if global_path.is_file():
@@ -1102,7 +1126,7 @@ def dispatch_command(cmd: str) -> None:
             args = sys.argv[3:]
             name = args[0] if args and not args[0].startswith("-") else ""
             if not name:
-                print("Usage: graphify provider add <name> --base-url URL --default-model MODEL --env-key KEY", file=sys.stderr)
+                print("Usage: dreamliner provider add <name> --base-url URL --default-model MODEL --env-key KEY", file=sys.stderr)
                 sys.exit(1)
             if name in BACKENDS:
                 print(f"Error: '{name}' is a built-in provider and cannot be overridden.", file=sys.stderr)
@@ -1155,12 +1179,12 @@ def dispatch_command(cmd: str) -> None:
                 "temperature": 0,
             }
             global_path.write_text(_json.dumps(existing, indent=2) + "\n", encoding="utf-8")
-            print(f"Provider '{name}' added. Use with: graphify extract . --backend {name}")
+            print(f"Provider '{name}' added. Use with: dreamliner extract . --backend {name}")
 
         elif subcmd == "remove":
             name = sys.argv[3] if len(sys.argv) > 3 else ""
             if not name:
-                print("Usage: graphify provider remove <name>", file=sys.stderr)
+                print("Usage: dreamliner provider remove <name>", file=sys.stderr)
                 sys.exit(1)
             existing = {}
             if global_path.is_file():
@@ -1176,7 +1200,7 @@ def dispatch_command(cmd: str) -> None:
             print(f"Provider '{name}' removed.")
 
         else:
-            print("Usage: graphify provider [add|list|show|remove]", file=sys.stderr)
+            print("Usage: dreamliner provider [add|list|show|remove]", file=sys.stderr)
             if subcmd:
                 sys.exit(1)
     elif cmd == "prs":
@@ -1197,11 +1221,11 @@ def dispatch_command(cmd: str) -> None:
         elif subcmd == "status":
             print(hook_status(Path(".")))
         else:
-            print("Usage: graphify hook [install|uninstall|status]", file=sys.stderr)
+            print("Usage: dreamliner hook [install|uninstall|status]", file=sys.stderr)
             sys.exit(1)
     elif cmd == "query":
         if len(sys.argv) < 3:
-            print("Usage: graphify query \"<question>\" [--dfs] [--context C] [--budget N] [--graph path]", file=sys.stderr)
+            print("Usage: dreamliner query \"<question>\" [--dfs] [--context C] [--budget N] [--graph path]", file=sys.stderr)
             sys.exit(1)
         from graphify.serve import _query_graph_text
         from graphify.security import sanitize_label
@@ -1243,8 +1267,7 @@ def dispatch_command(cmd: str) -> None:
                 i += 1
         gp = Path(graph_path).resolve()
         if not gp.exists():
-            print(f"error: graph file not found: {gp}", file=sys.stderr)
-            sys.exit(1)
+            _reject_unusable_graph(gp)
         if not gp.suffix == ".json":
             print(f"error: graph file must be a .json file", file=sys.stderr)
             sys.exit(1)
@@ -1294,8 +1317,9 @@ def dispatch_command(cmd: str) -> None:
             except Exception:
                 pass
         except Exception as exc:
-            print(f"error: could not load graph: {exc}", file=sys.stderr)
-            sys.exit(1)
+            _reject_unusable_graph(gp, exc=exc)
+        if G.number_of_nodes() == 0:
+            _reject_unusable_graph(gp, G)
         import time as _time
         _t0 = _time.perf_counter()
         _mode = "dfs" if use_dfs else "bfs"
@@ -1322,7 +1346,7 @@ def dispatch_command(cmd: str) -> None:
         print(_result)
     elif cmd == "affected":
         if len(sys.argv) < 3:
-            print("Usage: graphify affected \"<node-or-label>\" [--relation R] [--depth N] [--graph path]", file=sys.stderr)
+            print("Usage: dreamliner affected \"<node-or-label>\" [--relation R] [--depth N] [--graph path]", file=sys.stderr)
             sys.exit(1)
         from graphify.affected import DEFAULT_AFFECTED_RELATIONS, format_affected, load_graph
         query = sys.argv[2]
@@ -1362,16 +1386,15 @@ def dispatch_command(cmd: str) -> None:
                 i += 1
         gp = Path(graph_path).resolve()
         if not gp.exists():
-            print(f"error: graph file not found: {gp}", file=sys.stderr)
-            sys.exit(1)
+            _reject_unusable_graph(gp)
         if not gp.suffix == ".json":
             print("error: graph file must be a .json file", file=sys.stderr)
             sys.exit(1)
         try:
             graph = load_graph(gp)
         except Exception as exc:
-            print(f"error: could not load graph: {exc}", file=sys.stderr)
-            sys.exit(1)
+            _reject_unusable_graph(gp, exc=exc)
+        _reject_unusable_graph(gp, graph)
         # Derive the analysed repo root from the graph's own location so an
         # absolute-path seed resolves without requiring cwd to be that root
         # (#2706). The graph is written to <root>/<GRAPHIFY_OUT_NAME>/graph.json,
@@ -1441,16 +1464,15 @@ def dispatch_command(cmd: str) -> None:
                 i += 1
         gp = Path(graph_path).resolve()
         if not gp.exists():
-            print(f"error: graph file not found: {gp}", file=sys.stderr)
-            sys.exit(1)
+            _reject_unusable_graph(gp)
         if not gp.suffix == ".json":
             print("error: graph file must be a .json file", file=sys.stderr)
             sys.exit(1)
         try:
             G = load_graph(gp)
         except Exception as exc:
-            print(f"error: could not load graph: {exc}", file=sys.stderr)
-            sys.exit(1)
+            _reject_unusable_graph(gp, exc=exc)
+        _reject_unusable_graph(gp, G)
         gods = _god_nodes(G, top_n=top_n, exclude_hubs_percentile=gn_exclude_hubs)
         if as_json:
             print(json.dumps(gods, indent=2))
@@ -1549,7 +1571,7 @@ def dispatch_command(cmd: str) -> None:
     elif cmd == "path":
         if len(sys.argv) < 4:
             print(
-                'Usage: graphify path "<source>" "<target>" [--graph path] '
+                'Usage: dreamliner path "<source>" "<target>" [--graph path] '
                 "[--directed|--undirected]",
                 file=sys.stderr,
             )
@@ -1588,14 +1610,16 @@ def dispatch_command(cmd: str) -> None:
         undirected = direction_flag == "undirected"
         gp = Path(graph_path).resolve()
         if not gp.exists():
-            print(f"error: graph file not found: {gp}", file=sys.stderr)
-            sys.exit(1)
+            _reject_unusable_graph(gp)
         _enforce_graph_size_cap_or_exit(gp)
-        _raw = json.loads(gp.read_text(encoding="utf-8"))
+        try:
+            _raw = json.loads(gp.read_text(encoding="utf-8"))
+        except Exception as exc:
+            _reject_unusable_graph(gp, exc=exc)
         if "links" not in _raw and "edges" in _raw:
             _raw = dict(_raw, links=_raw["edges"])
         # Force directed so the renderer can recover stored caller→callee
-        # direction, and multigraph so exact-pair parallel links (e.g. a
+        # direction, and multigraph so exact-pair parallel links (e.g. a)
         # `references` and a `calls` edge between the same two nodes) survive load
         # instead of being silently collapsed last-writer-wins — otherwise the
         # printed relation could be one the traversed pair doesn't actually
@@ -1605,6 +1629,9 @@ def dispatch_command(cmd: str) -> None:
             G = json_graph.node_link_graph(_raw, edges="links")
         except TypeError:
             G = json_graph.node_link_graph(_raw)
+        except Exception as exc:
+            _reject_unusable_graph(gp, exc=exc)
+        _reject_unusable_graph(gp, G)
         src_scored = _score_nodes(G, [t.lower() for t in source_label.split()])
         tgt_scored = _score_nodes(G, [t.lower() for t in target_label.split()])
         if not src_scored:
@@ -1715,7 +1742,7 @@ def dispatch_command(cmd: str) -> None:
 
     elif cmd == "explain":
         if len(sys.argv) < 3:
-            print('Usage: graphify explain "<node>" [--graph path]', file=sys.stderr)
+            print('Usage: dreamliner explain "<node>" [--graph path]', file=sys.stderr)
             sys.exit(1)
         from graphify.serve import _find_node, find_node_ambiguity
         from networkx.readwrite import json_graph
@@ -1728,10 +1755,12 @@ def dispatch_command(cmd: str) -> None:
                 graph_path = args[i + 1]
         gp = Path(graph_path).resolve()
         if not gp.exists():
-            print(f"error: graph file not found: {gp}", file=sys.stderr)
-            sys.exit(1)
+            _reject_unusable_graph(gp)
         _enforce_graph_size_cap_or_exit(gp)
-        _raw = json.loads(gp.read_text(encoding="utf-8"))
+        try:
+            _raw = json.loads(gp.read_text(encoding="utf-8"))
+        except Exception as exc:
+            _reject_unusable_graph(gp, exc=exc)
         if "links" not in _raw and "edges" in _raw:
             _raw = dict(_raw, links=_raw["edges"])
         # Force directed so the renderer can recover stored caller→callee direction.
@@ -1740,6 +1769,9 @@ def dispatch_command(cmd: str) -> None:
             G = json_graph.node_link_graph(_raw, edges="links")
         except TypeError:
             G = json_graph.node_link_graph(_raw)
+        except Exception as exc:
+            _reject_unusable_graph(gp, exc=exc)
+        _reject_unusable_graph(gp, G)
         matches = _find_node(G, label)
         if not matches:
             print(f"No node matching '{label}' found.")
@@ -1854,7 +1886,7 @@ def dispatch_command(cmd: str) -> None:
         subcmd = sys.argv[2] if len(sys.argv) > 2 else ""
         if subcmd != "multigraph":
             print(
-                "Usage: graphify diagnose multigraph "
+                "Usage: dreamliner diagnose multigraph "
                 "[--graph path] [--json] [--max-examples N] "
                 "[--directed] [--undirected] [--extract-path path]",
                 file=sys.stderr,
@@ -1947,7 +1979,7 @@ def dispatch_command(cmd: str) -> None:
     elif cmd == "add":
         if len(sys.argv) < 3:
             print(
-                "Usage: graphify add <url> [--author Name] [--contributor Name] [--dir ./raw]",
+                "Usage: dreamliner add <url> [--author Name] [--contributor Name] [--dir ./raw]",
                 file=sys.stderr,
             )
             sys.exit(1)
@@ -1974,7 +2006,7 @@ def dispatch_command(cmd: str) -> None:
         try:
             saved = _ingest(url, target_dir, author=author, contributor=contributor)
             print(f"Saved to {saved}")
-            print("Run /graphify --update in your AI assistant to update the graph.")
+            print("Run `$dreamliner --update` in Codex to update the graph.")
         except Exception as exc:
             print(f"error: {exc}", file=sys.stderr)
             sys.exit(1)
@@ -2063,7 +2095,8 @@ def dispatch_command(cmd: str) -> None:
         graph_json = graph_override if graph_override is not None else watch_path / _GRAPHIFY_OUT / "graph.json"
         if not graph_json.exists():
             print(
-                f"error: no graph found at {graph_json} — run /graphify first",
+                f"error: no Dreamliner graph found at {graph_json}. "
+                "Build one first with `$dreamliner .` or `dreamliner extract .`.",
                 file=sys.stderr,
             )
             sys.exit(1)
@@ -2444,7 +2477,7 @@ def dispatch_command(cmd: str) -> None:
         # exiting silently when a hook-driven rebuild happens to be running.
         ok = _rebuild_code(watch_path, force=force, no_cluster=no_cluster, block_on_lock=True)
         if ok:
-            print("Code graph updated. For doc/paper/image changes run /graphify --update in your AI assistant.")
+            print("Code graph updated. For doc/paper/image changes run `$dreamliner --update` in Codex.")
             if not (
                 os.environ.get("GEMINI_API_KEY")
                 or os.environ.get("GOOGLE_API_KEY")
@@ -2452,7 +2485,7 @@ def dispatch_command(cmd: str) -> None:
                 or os.environ.get("DEEPSEEK_API_KEY")
                 or os.environ.get("GRAPHIFY_NO_TIPS")
             ):
-                print("Tip: set GEMINI_API_KEY or GOOGLE_API_KEY to use Gemini for semantic extraction.")
+                print("Tip: docs/papers/images need a Codex session (`$dreamliner --update`); code-only updates are local AST.")
         else:
             print(
                 "Nothing to update or rebuild failed — check output above.",
@@ -2479,7 +2512,7 @@ def dispatch_command(cmd: str) -> None:
         sys.exit(0)
     elif cmd == "check-update":
         if len(sys.argv) < 3:
-            print("Usage: graphify check-update <path>", file=sys.stderr)
+            print("Usage: dreamliner check-update <path>", file=sys.stderr)
             sys.exit(1)
         from graphify.watch import check_update
 
@@ -2516,7 +2549,7 @@ def dispatch_command(cmd: str) -> None:
             elif a == "--label" and i_arg + 1 < len(args):
                 project_label = args[i_arg + 1]; i_arg += 2
             elif a in ("-h", "--help"):
-                print("Usage: graphify tree [--graph PATH] [--output HTML]")
+                print("Usage: dreamliner tree [--graph PATH] [--output HTML]")
                 print("  --graph PATH         path to graph.json (default graphify-out/graph.json)")
                 print("  --output HTML        output path (default graphify-out/GRAPH_TREE.html)")
                 print("  --root PATH          filesystem root (default: longest common dir of all source_files)")
@@ -2553,9 +2586,9 @@ def dispatch_command(cmd: str) -> None:
         # the union of current+other nodes/edges back to current. Exits 1 on
         # corrupt input so git surfaces the conflict instead of silently
         # accepting a poisoned merge (see F-005).
-        # Usage: graphify merge-driver %O %A %B  (set in .git/config merge driver)
+        # Usage: dreamliner merge-driver %O %A %B  (set in .git/config merge driver)
         if len(sys.argv) < 5:
-            print("Usage: graphify merge-driver <base> <current> <other>", file=sys.stderr)
+            print("Usage: dreamliner merge-driver <base> <current> <other>", file=sys.stderr)
             sys.exit(1)
         _base_path, _current_path, _other_path = sys.argv[2], sys.argv[3], sys.argv[4]
         # Hard caps so a malicious or corrupted graph.json cannot exhaust memory
@@ -2618,7 +2651,7 @@ def dispatch_command(cmd: str) -> None:
                 i += 1
         if len(graph_paths) < 2:
             print(
-                "Usage: graphify merge-graphs <graph1.json> <graph2.json> [...] [--out merged.json]",
+                "Usage: dreamliner merge-graphs <graph1.json> <graph2.json> [...] [--out merged.json]",
                 file=sys.stderr,
             )
             sys.exit(1)
@@ -2758,7 +2791,7 @@ def dispatch_command(cmd: str) -> None:
     elif cmd == "clone":
         if len(sys.argv) < 3:
             print(
-                "Usage: graphify clone <github-url> [--branch <branch>] [--out <dir>]",
+                "Usage: dreamliner clone <github-url> [--branch <branch>] [--out <dir>]",
                 file=sys.stderr,
             )
             sys.exit(1)
@@ -2782,7 +2815,7 @@ def dispatch_command(cmd: str) -> None:
     elif cmd == "export":
         subcmd = sys.argv[2] if len(sys.argv) > 2 else ""
         if subcmd not in ("html", "callflow-html", "obsidian", "wiki", "svg", "graphml", "neo4j", "falkordb"):
-            print("Usage: graphify export <format>", file=sys.stderr)
+            print("Usage: dreamliner export <format>", file=sys.stderr)
             print("  html      [--graph PATH] [--labels PATH] [--node-limit N] [--no-viz]", file=sys.stderr)
             print("  callflow-html [GRAPH|DIR] [--graph PATH] [--labels PATH] [--report PATH] [--sections PATH] [--output HTML]", file=sys.stderr)
             print("            [--lang auto|zh-CN|en] [--max-sections N] [--diagram-scale N]", file=sys.stderr)
@@ -2860,7 +2893,7 @@ def dispatch_command(cmd: str) -> None:
             elif a == "--max-diagram-edges" and i + 1 < len(args):
                 callflow_max_diagram_edges = int(args[i + 1]); i += 2
             elif a in ("-h", "--help") and subcmd == "callflow-html":
-                print("Usage: graphify export callflow-html [GRAPH|DIR] [--graph PATH] [--labels PATH]")
+                print("Usage: dreamliner export callflow-html [GRAPH|DIR] [--graph PATH] [--labels PATH]")
                 print("  --report PATH          path to GRAPH_REPORT.md")
                 print("  --sections PATH        JSON section definitions")
                 print("  --output HTML          output path (default graphify-out/<project>-callflow.html)")
@@ -2906,7 +2939,11 @@ def dispatch_command(cmd: str) -> None:
         report_path = report_path.expanduser()
 
         if not graph_path.exists():
-            print(f"error: graph not found: {graph_path}. Run /graphify <path> first.", file=sys.stderr)
+            print(
+                f"error: no Dreamliner graph found at {graph_path}. "
+                "Build one first with `$dreamliner .` or `dreamliner extract .`.",
+                file=sys.stderr,
+            )
             sys.exit(1)
 
         if subcmd == "callflow-html":
@@ -3127,7 +3164,7 @@ def dispatch_command(cmd: str) -> None:
                 else:
                     i += 1
             if not source:
-                print("Usage: graphify global add <graph.json> [--as <repo-tag>]", file=sys.stderr)
+                print("Usage: dreamliner global add <graph.json> [--as <repo-tag>]", file=sys.stderr)
                 sys.exit(1)
             if not tag:
                 # Inferred through merge-graphs' own helper, which degrades to "repo"
@@ -3151,7 +3188,7 @@ def dispatch_command(cmd: str) -> None:
             # An omitted tag is a usage error; an explicitly empty one still has to be
             # addressable, since earlier versions could register a repo under "".
             if len(sys.argv) <= 3:
-                print("Usage: graphify global remove <repo-tag>", file=sys.stderr); sys.exit(1)
+                print("Usage: dreamliner global remove <repo-tag>", file=sys.stderr); sys.exit(1)
             tag = sys.argv[3]
             try:
                 removed = _global_remove(tag)
@@ -3161,7 +3198,7 @@ def dispatch_command(cmd: str) -> None:
         elif subcmd == "list":
             repos = _global_list()
             if not repos:
-                print("Global graph is empty. Use 'graphify global add' to add a project.")
+                print("Global graph is empty. Use 'dreamliner global add' to add a project.")
             else:
                 print(f"Global graph: {_global_path()}")
                 for tag, info in repos.items():
@@ -3169,7 +3206,7 @@ def dispatch_command(cmd: str) -> None:
         elif subcmd == "path":
             print(_global_path())
         else:
-            print("Usage: graphify global [add|remove|list|path]", file=sys.stderr); sys.exit(1)
+            print("Usage: dreamliner global [add|remove|list|path]", file=sys.stderr); sys.exit(1)
 
     elif cmd == "extract":
         # Headless full-pipeline extraction for CI / scripts (#698).
@@ -3180,9 +3217,9 @@ def dispatch_command(cmd: str) -> None:
         # has an API key set.
         if len(sys.argv) < 3:
             print(
-                "Usage: graphify extract <path> [--backend gemini|kimi|claude|openai|deepseek|ollama] "
+                "Usage: dreamliner extract <path> [--backend gemini|kimi|claude|openai|deepseek|ollama] "
                 "[--model M] [--mode deep] [--out DIR|--output DIR] [--google-workspace] [--no-cluster] "
-                "[--no-gitignore] [--code-only] [--no-dedup] "
+                "[--no-gitignore] [--code-only] [--no-viz] [--no-dedup] "
                 "[--max-workers N] [--token-budget N] [--max-concurrency N] "
                 "[--api-timeout S] [--postgres DSN] [--cargo] [--allow-partial] [--timing]",
                 file=sys.stderr,
@@ -3207,6 +3244,7 @@ def dispatch_command(cmd: str) -> None:
         cli_cargo: bool = False
         cli_allow_partial: bool = False
         no_cluster = False
+        no_viz = False
         dedup_llm = False
         # --no-dedup: skip entity deduplication entirely. On an incremental
         # merge the fuzzy pass runs over the COMBINED node set (existing graph +
@@ -3281,6 +3319,8 @@ def dispatch_command(cmd: str) -> None:
                 out_dir = Path(a.split("=", 1)[1]); i += 1
             elif a == "--no-cluster":
                 no_cluster = True; i += 1
+            elif a == "--no-viz":
+                no_viz = True; i += 1
             elif a == "--dedup-llm":
                 dedup_llm = True; i += 1
             elif a == "--no-dedup":
@@ -4399,9 +4439,17 @@ def dispatch_command(cmd: str) -> None:
             build_from_json as _build_from_json,
             build_merge as _build_merge,
         )
-        from graphify.cluster import cluster as _cluster, score_all as _score_all
+        from graphify.cluster import (
+            cluster as _cluster,
+            score_all as _score_all,
+            label_communities_by_hub as _label_hubs,
+        )
         from graphify.export import to_json as _to_json
-        from graphify.analyze import god_nodes as _god_nodes, surprising_connections as _surprising
+        from graphify.analyze import (
+            god_nodes as _god_nodes,
+            surprising_connections as _surprising,
+            suggest_questions as _suggest_questions,
+        )
         dedup_backend = backend if dedup_llm else None
         if merge_existing_graph:
             # Prune everything the current scan no longer covers: genuinely
@@ -4449,12 +4497,16 @@ def dispatch_command(cmd: str) -> None:
             G = _build([merged], dedup=not no_dedup, dedup_llm_backend=dedup_backend, root=target)
         stages.mark("build")
         if G.number_of_nodes() == 0:
+            from graphify.brand import empty_graph_message, failed_graph_build_message
+
             print(
-                "[graphify extract] graph is empty — extraction produced no nodes. "
-                "Possible causes: all files skipped, binary-only corpus, or LLM "
-                "returned no edges.",
+                failed_graph_build_message(
+                    str(graphify_out / "graph.json"),
+                    "Extraction produced no nodes.",
+                ),
                 file=sys.stderr,
             )
+            print(empty_graph_message(str(graphify_out / "graph.json")), file=sys.stderr)
             sys.exit(1)
 
         communities = _cluster(G, resolution=cli_resolution, exclude_hubs_percentile=cli_exclude_hubs)
@@ -4502,8 +4554,18 @@ def dispatch_command(cmd: str) -> None:
         # cwd-anchoring mistake #2316 fixed for watch/update, surviving in the
         # extract path.
         from graphify.watch import _git_head as _gh_target
-        _wrote = _to_json(G, communities, str(graph_json_path), force=_force_write,
-                          built_at_commit=_gh_target(cwd=Path(target).resolve()))
+        from graphify.report import generate as _generate_report
+        from graphify.report import load_learning_for_report as _llfr
+        # Deterministic hub names so standalone `extract --code-only` writes a
+        # readable GRAPH_REPORT.md without a second `cluster-only` pass (smoke /
+        # clean-machine). LLM relabel remains available via `dreamliner label`.
+        labels = _label_hubs(G, communities)
+        questions = _suggest_questions(G, communities, labels)
+        _built_at = _gh_target(cwd=Path(target).resolve())
+        _wrote = _to_json(
+            G, communities, str(graph_json_path), force=_force_write,
+            built_at_commit=_built_at, community_labels=labels,
+        )
         if not _wrote:
             # The shrink guard refused: this partial build is smaller than the
             # existing graph. Exit before writing the manifest/marker below, which
@@ -4557,6 +4619,37 @@ def dispatch_command(cmd: str) -> None:
         }
         from graphify.paths import write_json_atomic as _wja
         _wja(analysis_path, analysis, indent=2)
+        if (
+            isinstance(detection, dict)
+            and "total_files" in detection
+            and "total_words" in detection
+        ):
+            detection_result = detection
+        else:
+            detection_result = {"warning": "extract mode — file stats not available"}
+        report_path = graphify_out / "GRAPH_REPORT.md"
+        try:
+            report = _generate_report(
+                G, communities, cohesion, labels, gods, surprises,
+                detection_result,
+                {
+                    "input": merged["input_tokens"],
+                    "output": merged["output_tokens"],
+                },
+                str(target),
+                suggested_questions=questions,
+                built_at_commit=_built_at,
+                learning=_llfr(graph_json_path),
+            )
+            report_path.write_text(report, encoding="utf-8")
+        except Exception as exc:
+            print(
+                f"error: Dreamliner could not write {report_path}: {exc}. "
+                "graph.json was written; retry `dreamliner extract . --force` "
+                "or `dreamliner cluster-only . --no-label --no-viz`.",
+                file=sys.stderr,
+            )
+            sys.exit(1)
         try:
             if has_path:
                 _save_manifest(_manifest_files, manifest_path=str(manifest_path), kind="both", root=target, scan_corpus=_scan_corpus, clear_semantic=_cleared_semantic, clear_ast=_cleared_ast or None)
@@ -4570,6 +4663,9 @@ def dispatch_command(cmd: str) -> None:
             f"{len(communities)} communities"
         )
         print(f"[graphify extract] wrote {analysis_path}")
+        print(f"[graphify extract] wrote {report_path}")
+        if no_viz:
+            print("[dreamliner extract] --no-viz: skipped graph.html")
         if incremental_mode:
             _excl_note = f", {len(excluded_files)} excluded" if excluded_files else ""
             print(
@@ -4587,13 +4683,10 @@ def dispatch_command(cmd: str) -> None:
                 f"{merged['output_tokens']:,} out, "
                 f"est. cost (~{backend}): ${cost:.4f}"
             )
-        # extract intentionally stops at graph.json + analysis; the report and
-        # community labels are produced by `cluster-only` (or an agent's Step 5).
-        # Point standalone users at it so communities get named (#1097).
         print(
             "[graphify extract] next: run "
-            f"`graphify cluster-only {graphify_out.parent}` "
-            "to generate GRAPH_REPORT.md and name communities"
+            f"`dreamliner label {graphify_out.parent}` "
+            "to refresh LLM community names if needed"
         )
         stages.total()
 
@@ -4613,7 +4706,7 @@ def dispatch_command(cmd: str) -> None:
         # Stdout: "Cache: N hit, M miss"
         from graphify.cache import check_semantic_cache
         if len(sys.argv) < 3:
-            print("Usage: graphify cache-check <files_from> [--root <dir>] "
+            print("Usage: dreamliner cache-check <files_from> [--root <dir>] "
                   "[--mode <m> | --deep] [--prompt-file <path>]", file=sys.stderr)
             sys.exit(1)
         files_from = Path(sys.argv[2])
@@ -4663,7 +4756,7 @@ def dispatch_command(cmd: str) -> None:
         # Deduplicates nodes by id (first writer wins). Sums token counts.
         import glob as _glob
         if len(sys.argv) < 3:
-            print("Usage: graphify merge-chunks <chunk_files...> --out <path>", file=sys.stderr)
+            print("Usage: dreamliner merge-chunks <chunk_files...> --out <path>", file=sys.stderr)
             sys.exit(1)
         out_path: Path | None = None
         chunk_args: list[str] = []
@@ -4743,7 +4836,7 @@ def dispatch_command(cmd: str) -> None:
         # Merges cached semantic results with freshly-extracted chunk results.
         # Deduplicates nodes by id (cached entries take priority over new ones).
         if len(sys.argv) < 3:
-            print("Usage: graphify merge-semantic --cached <path> --new <path> --out <path>", file=sys.stderr)
+            print("Usage: dreamliner merge-semantic --cached <path> --new <path> --out <path>", file=sys.stderr)
             sys.exit(1)
         cached_path: Path | None = None
         new_path: Path | None = None
@@ -4789,5 +4882,5 @@ def dispatch_command(cmd: str) -> None:
         _reenter_main()
     else:
         print(f"error: unknown command '{cmd}'", file=sys.stderr)
-        print("Run 'graphify --help' for usage.", file=sys.stderr)
+        print("Run 'dreamliner --help' for usage.", file=sys.stderr)
         sys.exit(1)

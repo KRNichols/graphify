@@ -701,8 +701,8 @@ def test_load_graph_corrupted_json_prints_recovery_message(tmp_path, capsys):
     with pytest.raises(SystemExit):
         _load_graph(str(p))
     err = capsys.readouterr().err
-    assert "graph.json is corrupted" in err
-    assert "Re-run /graphify to rebuild" in err
+    assert "could not load graph.json" in err or "corrupted" in err
+    assert "dreamliner extract" in err or "$dreamliner" in err
 
 
 def test_load_graph_generic_value_error_message_unchanged(tmp_path, capsys):

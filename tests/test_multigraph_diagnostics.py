@@ -406,8 +406,8 @@ def test_diagnose_multigraph_cli_json_output(monkeypatch, tmp_path: Path, capsys
 @pytest.mark.parametrize(
     ("argv_tail", "expected"),
     [
-        ([], "Usage: graphify diagnose multigraph"),
-        (["wrong"], "Usage: graphify diagnose multigraph"),
+        ([], "Usage: dreamliner diagnose multigraph"),
+        (["wrong"], "Usage: dreamliner diagnose multigraph"),
         (["multigraph", "--graph"], "error: --graph requires a path"),
         (["multigraph", "--max-examples"], "error: --max-examples requires an integer"),
         (["multigraph", "--max-examples", "many"], "error: --max-examples requires an integer"),
