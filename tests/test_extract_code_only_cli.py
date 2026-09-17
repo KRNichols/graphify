@@ -49,6 +49,20 @@ def test_code_only_succeeds_without_key(tmp_path):
     assert any(str(l).startswith("hello") for l in labels), "code was indexed"
 
 
+def test_code_only_no_viz_writes_graph_report(tmp_path):
+    """Standalone extract --code-only --no-viz must write graph.json AND GRAPH_REPORT.md."""
+    repo = _mixed_repo(tmp_path)
+    r = _run(repo, "--code-only", "--no-viz")
+    assert r.returncode == 0, f"--code-only --no-viz should succeed: {r.stderr}"
+    out = repo / "graphify-out"
+    assert (out / "graph.json").exists(), "code-only extract must write graph.json"
+    report = out / "GRAPH_REPORT.md"
+    assert report.exists(), "code-only extract must write GRAPH_REPORT.md"
+    text = report.read_text(encoding="utf-8")
+    assert "Graph Report" in text
+    assert "God Nodes" in text
+
+
 def test_mixed_repo_without_key_errors_and_points_at_code_only(tmp_path):
     repo = _mixed_repo(tmp_path)
     r = _run(repo)  # no --code-only, no key

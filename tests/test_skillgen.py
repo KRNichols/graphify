@@ -138,7 +138,7 @@ def test_lean_core_runs_default_pipeline_with_zero_references():
     # The whole default pipeline (detect -> AST -> build -> label -> HTML ->
     # report) must be present in the core so a plain run reads no reference.
     for needed in (
-        "### Step 1 - Ensure graphify is installed",
+        "### Step 1 - Ensure Dreamliner is installed",
         "### Step 2 - Detect files",
         "### Step 3 - Extract entities and relationships",
         "#### Part A - Structural extraction for code files",
@@ -398,7 +398,7 @@ _BASH_ONLY_TOKENS = ("$(cat ", "rm -f ", "2>/dev/null", "```bash")
 
 # The default-pipeline step headings that must exist on BOTH shells (parity).
 _STEP_HEADINGS = (
-    "### Step 1 - Ensure graphify is installed",
+    "### Step 1 - Ensure Dreamliner is installed",
     "### Step 2 - Detect files",
     "### Step 3 - Extract entities and relationships",
     "#### Part A - Structural extraction for code files",

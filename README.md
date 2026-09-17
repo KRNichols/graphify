@@ -33,7 +33,7 @@ multi_agent = true
 EOF
 
 # 3. Install Dreamliner from this fork
-uv tool install git+https://github.com/KRNichols/graphify
+uv tool install git+https://github.com/KRNichols/graphify.git@cursor/dreamliner-codex-rebrand-5833
 # or from a clone:
 #   git clone https://github.com/KRNichols/graphify && cd graphify && pip install -e .
 
@@ -54,7 +54,7 @@ dreamliner query "how does this codebase fit together?"
 ### Install only
 
 ```bash
-uv tool install git+https://github.com/KRNichols/graphify
+uv tool install git+https://github.com/KRNichols/graphify.git@cursor/dreamliner-codex-rebrand-5833
 # or from a clone:
 pip install -e .
 

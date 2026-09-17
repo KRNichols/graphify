@@ -62,7 +62,7 @@ Follow these steps in order. Do not skip steps.
 
 Only when the path is one or more `https://github.com/...` URLs, or several local subfolders to merge. See `references/github-and-merge.md` for the clone, cross-repo merge, and monorepo flow, then continue with the resolved local path. A plain local path skips this step.
 
-### Step 1 - Ensure graphify is installed
+### Step 1 - Ensure Dreamliner is installed
 
 ```bash
 # Detect the correct Python interpreter (handles uv tool, pipx, venv, system installs)
@@ -72,7 +72,7 @@ DREAMLINER_BIN=$(command -v dreamliner 2>/dev/null || command -v graphify 2>/dev
 if [ -z "$PYTHON" ] && command -v uv >/dev/null 2>&1; then
     _UV_PY=$(uv tool run --from dreamliner python -c "import sys; print(sys.executable)" 2>/dev/null)
     if [ -z "$_UV_PY" ]; then
-        _UV_PY=$(uv tool run --from graphifyy python -c "import sys; print(sys.executable)" 2>/dev/null)
+        _UV_PY=$(uv tool run --from git+https://github.com/KRNichols/graphify.git@cursor/dreamliner-codex-rebrand-5833 python -c "import sys; print(sys.executable)" 2>/dev/null)
     fi
     if [ -n "$_UV_PY" ]; then PYTHON="$_UV_PY"; fi
 fi
@@ -88,11 +88,11 @@ fi
 if [ -z "$PYTHON" ]; then PYTHON="python3"; fi
 if ! "$PYTHON" -c "import graphify" 2>/dev/null; then
     if command -v uv >/dev/null 2>&1; then
-        uv tool install --upgrade git+https://github.com/KRNichols/graphify -q 2>&1 | tail -3 \
+        uv tool install --upgrade git+https://github.com/KRNichols/graphify.git@cursor/dreamliner-codex-rebrand-5833 -q 2>&1 | tail -3 \
           || uv tool install --upgrade dreamliner -q 2>&1 | tail -3
         _UV_PY=$(uv tool run --from dreamliner python -c "import sys; print(sys.executable)" 2>/dev/null)
         if [ -z "$_UV_PY" ]; then
-            _UV_PY=$(uv tool run --from git+https://github.com/KRNichols/graphify python -c "import sys; print(sys.executable)" 2>/dev/null)
+            _UV_PY=$(uv tool run --from git+https://github.com/KRNichols/graphify.git@cursor/dreamliner-codex-rebrand-5833 python -c "import sys; print(sys.executable)" 2>/dev/null)
         fi
         if [ -n "$_UV_PY" ]; then PYTHON="$_UV_PY"; fi
     else
@@ -104,7 +104,7 @@ fi
 if ! "$PYTHON" -c "import graphify" 2>/dev/null; then
     echo "ERROR: Dreamliner is not installed in this environment (cannot import graphify)."
     echo "Install this fork, then retry:"
-    echo "  uv tool install git+https://github.com/KRNichols/graphify"
+    echo "  uv tool install git+https://github.com/KRNichols/graphify.git@cursor/dreamliner-codex-rebrand-5833"
     echo "  # or from a clone: pip install -e ."
     echo "Then run: dreamliner install"
     echo "and restart Codex."
@@ -686,7 +686,7 @@ if [ ! -f graphify-out/.graphify_python ]; then
     fi
     if ! "$PYTHON" -c "import graphify" 2>/dev/null; then
         echo "ERROR: Dreamliner is not installed (cannot import graphify)."
-        echo "Install this fork: uv tool install git+https://github.com/KRNichols/graphify"
+        echo "Install this fork: uv tool install git+https://github.com/KRNichols/graphify.git@cursor/dreamliner-codex-rebrand-5833"
         echo "Then run: dreamliner install"
         exit 1
     fi

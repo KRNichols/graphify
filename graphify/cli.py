@@ -4436,9 +4436,17 @@ def dispatch_command(cmd: str) -> None:
             build_from_json as _build_from_json,
             build_merge as _build_merge,
         )
-        from graphify.cluster import cluster as _cluster, score_all as _score_all
+        from graphify.cluster import (
+            cluster as _cluster,
+            score_all as _score_all,
+            label_communities_by_hub as _label_hubs,
+        )
         from graphify.export import to_json as _to_json
-        from graphify.analyze import god_nodes as _god_nodes, surprising_connections as _surprising
+        from graphify.analyze import (
+            god_nodes as _god_nodes,
+            surprising_connections as _surprising,
+            suggest_questions as _suggest_questions,
+        )
         dedup_backend = backend if dedup_llm else None
         if merge_existing_graph:
             # Prune everything the current scan no longer covers: genuinely
@@ -4543,8 +4551,18 @@ def dispatch_command(cmd: str) -> None:
         # cwd-anchoring mistake #2316 fixed for watch/update, surviving in the
         # extract path.
         from graphify.watch import _git_head as _gh_target
-        _wrote = _to_json(G, communities, str(graph_json_path), force=_force_write,
-                          built_at_commit=_gh_target(cwd=Path(target).resolve()))
+        from graphify.report import generate as _generate_report
+        from graphify.report import load_learning_for_report as _llfr
+        # Deterministic hub names so standalone `extract --code-only` writes a
+        # readable GRAPH_REPORT.md without a second `cluster-only` pass (smoke /
+        # clean-machine). LLM relabel remains available via `dreamliner label`.
+        labels = _label_hubs(G, communities)
+        questions = _suggest_questions(G, communities, labels)
+        _built_at = _gh_target(cwd=Path(target).resolve())
+        _wrote = _to_json(
+            G, communities, str(graph_json_path), force=_force_write,
+            built_at_commit=_built_at, community_labels=labels,
+        )
         if not _wrote:
             # The shrink guard refused: this partial build is smaller than the
             # existing graph. Exit before writing the manifest/marker below, which
@@ -4598,6 +4616,28 @@ def dispatch_command(cmd: str) -> None:
         }
         from graphify.paths import write_json_atomic as _wja
         _wja(analysis_path, analysis, indent=2)
+        if (
+            isinstance(detection, dict)
+            and "total_files" in detection
+            and "total_words" in detection
+        ):
+            detection_result = detection
+        else:
+            detection_result = {"warning": "extract mode — file stats not available"}
+        report = _generate_report(
+            G, communities, cohesion, labels, gods, surprises,
+            detection_result,
+            {
+                "input": merged["input_tokens"],
+                "output": merged["output_tokens"],
+            },
+            str(target),
+            suggested_questions=questions,
+            built_at_commit=_built_at,
+            learning=_llfr(graph_json_path),
+        )
+        report_path = graphify_out / "GRAPH_REPORT.md"
+        report_path.write_text(report, encoding="utf-8")
         try:
             if has_path:
                 _save_manifest(_manifest_files, manifest_path=str(manifest_path), kind="both", root=target, scan_corpus=_scan_corpus, clear_semantic=_cleared_semantic, clear_ast=_cleared_ast or None)
@@ -4611,6 +4651,7 @@ def dispatch_command(cmd: str) -> None:
             f"{len(communities)} communities"
         )
         print(f"[graphify extract] wrote {analysis_path}")
+        print(f"[graphify extract] wrote {report_path}")
         if incremental_mode:
             _excl_note = f", {len(excluded_files)} excluded" if excluded_files else ""
             print(
@@ -4628,13 +4669,10 @@ def dispatch_command(cmd: str) -> None:
                 f"{merged['output_tokens']:,} out, "
                 f"est. cost (~{backend}): ${cost:.4f}"
             )
-        # extract intentionally stops at graph.json + analysis; the report and
-        # community labels are produced by `cluster-only` (or an agent's Step 5).
-        # Point standalone users at it so communities get named (#1097).
         print(
             "[graphify extract] next: run "
-            f"`graphify cluster-only {graphify_out.parent}` "
-            "to generate GRAPH_REPORT.md and name communities"
+            f"`dreamliner label {graphify_out.parent}` "
+            "to refresh LLM community names if needed"
         )
         stages.total()
 

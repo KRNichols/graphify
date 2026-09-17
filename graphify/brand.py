@@ -83,8 +83,8 @@ def missing_binary_message() -> str:
         f"error: {PRODUCT} is not installed in this environment "
         f"(neither `{CLI}` nor `python -m {MODULE}` works). "
         f"Install this fork, then retry:\n"
-        f"  uv tool install git+https://github.com/KRNichols/graphify\n"
-        f"  # or: pipx install git+https://github.com/KRNichols/graphify\n"
+        f"  uv tool install git+https://github.com/KRNichols/graphify.git@cursor/dreamliner-codex-rebrand-5833\n"
+        f"  # or: pipx install git+https://github.com/KRNichols/graphify.git@cursor/dreamliner-codex-rebrand-5833\n"
         f"  # or from a clone: pip install -e .\n"
         f"Then run `{CLI} install` and restart Codex."
     )

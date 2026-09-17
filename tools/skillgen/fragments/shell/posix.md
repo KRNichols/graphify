@@ -6,7 +6,7 @@ DREAMLINER_BIN=$(command -v dreamliner 2>/dev/null || command -v graphify 2>/dev
 if [ -z "$PYTHON" ] && command -v uv >/dev/null 2>&1; then
     _UV_PY=$(uv tool run --from dreamliner python -c "import sys; print(sys.executable)" 2>/dev/null)
     if [ -z "$_UV_PY" ]; then
-        _UV_PY=$(uv tool run --from graphifyy python -c "import sys; print(sys.executable)" 2>/dev/null)
+        _UV_PY=$(uv tool run --from git+https://github.com/KRNichols/graphify.git@cursor/dreamliner-codex-rebrand-5833 python -c "import sys; print(sys.executable)" 2>/dev/null)
     fi
     if [ -n "$_UV_PY" ]; then PYTHON="$_UV_PY"; fi
 fi
@@ -22,11 +22,11 @@ fi
 if [ -z "$PYTHON" ]; then PYTHON="python3"; fi
 if ! "$PYTHON" -c "import graphify" 2>/dev/null; then
     if command -v uv >/dev/null 2>&1; then
-        uv tool install --upgrade git+https://github.com/KRNichols/graphify -q 2>&1 | tail -3 \
+        uv tool install --upgrade git+https://github.com/KRNichols/graphify.git@cursor/dreamliner-codex-rebrand-5833 -q 2>&1 | tail -3 \
           || uv tool install --upgrade dreamliner -q 2>&1 | tail -3
         _UV_PY=$(uv tool run --from dreamliner python -c "import sys; print(sys.executable)" 2>/dev/null)
         if [ -z "$_UV_PY" ]; then
-            _UV_PY=$(uv tool run --from git+https://github.com/KRNichols/graphify python -c "import sys; print(sys.executable)" 2>/dev/null)
+            _UV_PY=$(uv tool run --from git+https://github.com/KRNichols/graphify.git@cursor/dreamliner-codex-rebrand-5833 python -c "import sys; print(sys.executable)" 2>/dev/null)
         fi
         if [ -n "$_UV_PY" ]; then PYTHON="$_UV_PY"; fi
     else
@@ -38,7 +38,7 @@ fi
 if ! "$PYTHON" -c "import graphify" 2>/dev/null; then
     echo "ERROR: Dreamliner is not installed in this environment (cannot import graphify)."
     echo "Install this fork, then retry:"
-    echo "  uv tool install git+https://github.com/KRNichols/graphify"
+    echo "  uv tool install git+https://github.com/KRNichols/graphify.git@cursor/dreamliner-codex-rebrand-5833"
     echo "  # or from a clone: pip install -e ."
     echo "Then run: dreamliner install"
     echo "and restart Codex."

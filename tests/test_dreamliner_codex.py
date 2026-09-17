@@ -184,6 +184,10 @@ def test_skill_codex_has_no_multi_host_leftovers():
     assert "Works in" not in text
     assert "ERROR: Dreamliner is not installed" in text
     assert "multi_agent = true" in text
+    assert "### Step 1 - Ensure Dreamliner is installed" in text
+    assert "### Step 1 - Ensure graphify is installed" not in text
+    assert "uv tool run --from graphifyy" not in text
+    assert "git+https://github.com/KRNichols/graphify.git@cursor/dreamliner-codex-rebrand-5833" in text
 
 
 def test_readme_has_clean_machine_runbook():
@@ -197,6 +201,8 @@ def test_readme_has_clean_machine_runbook():
     assert "$dreamliner" in text
     assert "/graphify ." not in text
     assert "Claude Code, Cursor, Gemini CLI" in text  # named only as unsupported
+    assert "git+https://github.com/KRNichols/graphify.git@cursor/dreamliner-codex-rebrand-5833" in text
+    assert "uv tool install git+https://github.com/KRNichols/graphify\n" not in text
 
 
 def test_doctor_fails_on_missing_codex_and_bad_config(tmp_path, capsys):

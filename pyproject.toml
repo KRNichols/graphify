@@ -135,8 +135,8 @@ dev = [
 ]
 
 [tool.uv]
-# Install via: uv tool install git+https://github.com/KRNichols/graphify
-# Run without installing: uvx --from git+https://github.com/KRNichols/graphify dreamliner install
+# Install via: uv tool install git+https://github.com/KRNichols/graphify.git@cursor/dreamliner-codex-rebrand-5833
+# Run without installing: uvx --from git+https://github.com/KRNichols/graphify.git@cursor/dreamliner-codex-rebrand-5833 dreamliner install
 package = true
 
 [tool.setuptools]

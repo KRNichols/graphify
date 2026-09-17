@@ -213,7 +213,7 @@ def _check_skill_version(skill_dst: Path, platform_names: "list[str] | None" = N
             print(
                 f"  warning: skill is from Dreamliner {installed}, but the package is "
                 f"{__version__} (older). Upgrade the package "
-                f"(e.g. 'uv tool upgrade --from git+https://github.com/KRNichols/graphify dreamliner' "
+                f"(e.g. 'uv tool upgrade --from git+https://github.com/KRNichols/graphify.git@cursor/dreamliner-codex-rebrand-5833 dreamliner' "
                 f"or 'pip install -U .'); "
                 f"running 'dreamliner install' would downgrade the skill.",
                 file=sys.stderr,

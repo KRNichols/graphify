@@ -6,7 +6,7 @@ When the user types `$dreamliner`, use the installed Dreamliner skill or instruc
 
 Rules:
 - For codebase questions, first run `dreamliner query "<question>"` when graphify-out/graph.json exists. Use `dreamliner path "<A>" "<B>"` for relationships and `dreamliner explain "<concept>"` for focused concepts. These return a scoped subgraph, usually much smaller than GRAPH_REPORT.md or raw grep output.
-- If the CLI is missing, stop and tell the user to install this fork (`uv tool install git+https://github.com/KRNichols/graphify`) and run `dreamliner install`. Do not pretend the graph was queried.
+- If the CLI is missing, stop and tell the user to install this fork (`uv tool install git+https://github.com/KRNichols/graphify.git@cursor/dreamliner-codex-rebrand-5833`) and run `dreamliner install`. Do not pretend the graph was queried.
 - If graph.json is missing, empty, or unreadable, say so and offer `$dreamliner .` to rebuild. Do not invent nodes or edges.
 - Dirty graphify-out/ files are expected after hooks or incremental updates; dirty graph files are not a reason to skip Dreamliner. Only skip Dreamliner if the task is about stale or incorrect graph output, or the user explicitly says not to use it.
 - If graphify-out/wiki/index.md exists, use it for broad navigation instead of raw source browsing.

@@ -9,7 +9,7 @@ if [ ! -f graphify-out/.graphify_python ]; then
     fi
     if ! "$PYTHON" -c "import graphify" 2>/dev/null; then
         echo "ERROR: Dreamliner is not installed (cannot import graphify)."
-        echo "Install this fork: uv tool install git+https://github.com/KRNichols/graphify"
+        echo "Install this fork: uv tool install git+https://github.com/KRNichols/graphify.git@cursor/dreamliner-codex-rebrand-5833"
         echo "Then run: dreamliner install"
         exit 1
     fi
