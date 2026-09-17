@@ -103,12 +103,28 @@ ALWAYS_ON_SANCTIONED_EDITS: dict[str, tuple[tuple[str, str], ...]] = {
     # #1530: install guidance must stay host-generic — do not tell agents to
     # invoke a literal `skill` tool with `skill: "graphify"`, which is
     # host-specific and not valid in every environment.
+    # Dreamliner fork: Codex invoke is `$dreamliner`; keep the `## graphify`
+    # heading so install/uninstall section matching stays stable.
     "_AGENTS_MD_SECTION": (
         (
             "When the user types `/graphify`, invoke the `skill` tool with "
             '`skill: "graphify"` before doing anything else.',
             "When the user types `/graphify`, use the installed graphify skill or instructions "
             "before doing anything else.",
+        ),
+        (
+            "This project has a knowledge graph at graphify-out/",
+            "This project has a Dreamliner knowledge graph at graphify-out/",
+        ),
+        (
+            "When the user types `/graphify`, use the installed graphify skill or instructions "
+            "before doing anything else.",
+            "When the user types `$dreamliner`, use the installed Dreamliner skill or instructions "
+            "before doing anything else.",
+        ),
+        (
+            "not a reason to skip graphify. Only skip graphify if",
+            "not a reason to skip Dreamliner. Only skip Dreamliner if",
         ),
     ),
 }
@@ -190,6 +206,18 @@ _AGENTS_MD_HOOKS: dict[str, dict[str, str]] = {
         "uninstall_block": "graphify agents uninstall  # remove the section",
         "pretooluse_note": "",
     },
+    "codex": {
+        "heading_suffix": " (Dreamliner / Codex)",
+        "host_display": "Codex",
+        "install_block": "graphify install --platform codex\ngraphify install --project",
+        "uninstall_block": "graphify uninstall --project --platform codex",
+        "pretooluse_note": (
+            "\n> **Dreamliner / Codex:** always-on guidance lives in `AGENTS.md`. "
+            "The `.codex/hooks.json` PreToolUse entry is an intentional no-op "
+            "(Codex Desktop rejects additionalContext). Invoke the skill as "
+            "`$dreamliner`.\n"
+        ),
+    },
 }
 # The prose file name the lean-core hooks pointer names, per hooks variant.
 _HOOKS_TARGET = {
@@ -255,10 +283,27 @@ _CONSOLIDATION_ALLOWLIST: dict[str, frozenset[str]] = {
     }),
 }
 
+# Dreamliner / Codex branding: v8 headings that are renamed (invoke) or
+# re-homed (always-on CLAUDE.md -> AGENTS.md). Not a wave-2/3 consolidation.
+_BRANDING_ALLOWLIST: dict[str, frozenset[str]] = {
+    "codex": frozenset({
+        "## For native CLAUDE.md integration",
+    }),
+}
+
+
+def _alias_branded_headings(hs: set[str]) -> set[str]:
+    """Treat ``$dreamliner`` headings as covering the v8 ``/graphify`` names."""
+    return hs | {h.replace("$dreamliner", "/graphify") for h in hs if "$dreamliner" in h}
+
 
 def _audit_allowlist(platform_key: str) -> frozenset[str]:
     """The full set of v8 headings the audit may skip for this host."""
-    return SHARED_INTRO_ALLOWLIST | _CONSOLIDATION_ALLOWLIST.get(platform_key, frozenset())
+    return (
+        SHARED_INTRO_ALLOWLIST
+        | _CONSOLIDATION_ALLOWLIST.get(platform_key, frozenset())
+        | _BRANDING_ALLOWLIST.get(platform_key, frozenset())
+    )
 
 
 @dataclass(frozen=True)
@@ -550,7 +595,17 @@ def _render_core(platform: Platform) -> str:
         raise ValueError(f"unfilled core slots for '{platform.key}': {leftover}")
     if platform.shell == "powershell":
         body = _core_to_powershell(body)
+    if platform.key == "codex":
+        body = _brand_codex_invoke(body)
     return _normalise(body)
+
+
+def _brand_codex_invoke(body: str) -> str:
+    """Rewrite Claude-style ``/graphify`` invoke to Codex ``$dreamliner``.
+
+    Leaves ``graphify-out`` and the ``graphify`` CLI command untouched.
+    """
+    return re.sub(r"/graphify(?!-)", "$dreamliner", body)
 
 
 def _render_agents_md_hooks(platform: Platform) -> str:
@@ -613,6 +668,8 @@ def render(platform: Platform) -> list[RenderedArtifact]:
             body = _render_agents_md_hooks(platform)
         else:
             body = _read_fragment(references[name])
+        if platform.key == "codex":
+            body = _brand_codex_invoke(body)
         rel = f"{platform.refs_dst}/{name}.md"
         artifacts.append(RenderedArtifact(rel, body))
     return artifacts
@@ -796,13 +853,13 @@ def audit_coverage(platform: Platform) -> list[str]:
 
     artifacts = render(platform)
     by_path = {a.path: a.content for a in artifacts}
-    core_headings = set(headings(by_path[platform.skill_dst]))
+    core_headings = _alias_branded_headings(set(headings(by_path[platform.skill_dst])))
 
     # Map each reference's rendered heading set.
     ref_headings: dict[str, set[str]] = {}
     for name in platform.reference_sources():
         rel = f"{platform.refs_dst}/{name}.md"
-        ref_headings[name] = set(headings(by_path[rel]))
+        ref_headings[name] = _alias_branded_headings(set(headings(by_path[rel])))
 
     for h in baseline_headings:
         # Allowlisted consolidations + the lean intro are intentional deltas.

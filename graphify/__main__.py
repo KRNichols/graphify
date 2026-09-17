@@ -1,4 +1,4 @@
-"""graphify CLI - `graphify install` sets up the Claude Code skill."""
+"""Dreamliner CLI - `graphify install` sets up the Codex skill."""
 
 from __future__ import annotations
 import errno
@@ -532,9 +532,16 @@ def _run_cli() -> None:
     if len(sys.argv) < 2 or sys.argv[1] in ("-h", "--help", "-?"):
         print("Usage: graphify <command>")
         print()
+        print("Dreamliner (Codex-only). Install the skill with:")
+        print("  graphify install")
+        print("  graphify install --platform codex")
+        print("  graphify install --project")
+        print()
+        print("Then in Codex type:  $dreamliner .")
+        print()
         print("Commands:")
-        print("  install [--platform P]  copy skill to platform config dir (claude|windows|codebuddy|codex|opencode|aider|amp|agents|claw|droid|trae|trae-cn|gemini|cursor|antigravity|hermes|kiro|pi|devin)")
-        print("  uninstall               remove graphify from all detected platforms in one shot")
+        print("  install [--platform codex]  copy the Dreamliner skill into ~/.codex/skills")
+        print("  uninstall               remove Dreamliner skill files in one shot")
         print("    --purge                 also delete graphify-out/ directory")
         print("  path \"A\" \"B\"            shortest path between two nodes in graph.json")
         print("    --graph <path>          path to graph.json (default graphify-out/graph.json)")
@@ -550,7 +557,7 @@ def _run_cli() -> None:
         print("                            (default follows JSON directed flag;")
         print("                             raw extraction with no flag defaults directed)")
         print("    --extract-path PATH     extractor source for suppression scan")
-        print("  clone <github-url>      clone a GitHub repo locally and print its path for /graphify")
+        print("  clone <github-url>      clone a GitHub repo locally and print its path for $dreamliner")
         print("  merge-driver <base> <current> <other>  git merge driver: union-merge two graph.json files (set up via hook install)")
         print("  merge-graphs <g1> <g2>  merge two or more graph.json files into one cross-repo graph")
         print("    --out <path>            output path (default: graphify-out/merged-graph.json)")
@@ -664,73 +671,14 @@ def _run_cli() -> None:
         print("                          (or set NEO4J_PASSWORD instead of --password to keep it off argv)")
         print("  export falkordb         emit Cypher or push to FalkorDB [--graph PATH] [--push URI] [--user U] [--password P]")
         print("                          (or set FALKORDB_PASSWORD instead of --password to keep it off argv)")
-        print("  hook install            install post-commit/post-checkout git hooks (all platforms)")
+        print("  hook install            install post-commit/post-checkout git hooks")
         print("  hook uninstall          remove git hooks")
         print("  hook status             check if git hooks are installed")
-        print(
-            "  gemini install          write GEMINI.md section + BeforeTool hook (Gemini CLI)"
-        )
-        print("  gemini uninstall        remove GEMINI.md section + BeforeTool hook")
-        print("  cursor install          write .cursor/rules/graphify.mdc (Cursor)")
-        print("  cursor uninstall        remove .cursor/rules/graphify.mdc")
-        print("  claude install          write graphify section to CLAUDE.md + PreToolUse hook (Claude Code)")
-        print("  claude uninstall        remove graphify section from CLAUDE.md + PreToolUse hook")
-        print("  codebuddy install       write graphify section to CODEBUDDY.md + PreToolUse hook (CodeBuddy)")
-        print("  codebuddy uninstall     remove graphify section from CODEBUDDY.md + PreToolUse hook")
-        print("  codex install           write graphify section to AGENTS.md (Codex)")
-        print("  codex uninstall         remove graphify section from AGENTS.md")
-        print(
-            "  opencode install        write graphify section to AGENTS.md + tool.execute.before plugin (OpenCode)"
-        )
-        print(
-            "  opencode uninstall      remove graphify section from AGENTS.md + plugin"
-        )
-        print(
-            "  kilo install            install native Kilo skill + command + AGENTS.md + .kilo plugin"
-        )
-        print(
-            "  kilo uninstall          remove native Kilo skill + command + AGENTS.md + .kilo plugin"
-        )
-        print("  aider install           write graphify section to AGENTS.md (Aider)")
-        print("  aider uninstall         remove graphify section from AGENTS.md")
-        print(
-            "  copilot install         copy graphify skill to ~/.copilot/skills (GitHub Copilot CLI)"
-        )
-        print("  copilot uninstall       remove graphify skill from ~/.copilot/skills")
-        print(
-            "  vscode install          configure VS Code Copilot Chat (skill + .github/copilot-instructions.md)"
-        )
-        print("  vscode uninstall        remove VS Code Copilot Chat configuration")
-        print(
-            "  claw install            write graphify section to AGENTS.md (OpenClaw)"
-        )
-        print("  claw uninstall          remove graphify section from AGENTS.md")
-        print(
-            "  droid install           write graphify section to AGENTS.md (Factory Droid)"
-        )
-        print("  droid uninstall        remove graphify section from AGENTS.md")
-        print("  trae install            write graphify section to AGENTS.md (Trae)")
-        print("  trae uninstall         remove graphify section from AGENTS.md")
-        print("  trae-cn install         write graphify section to AGENTS.md (Trae CN)")
-        print("  trae-cn uninstall      remove graphify section from AGENTS.md")
-        print(
-            "  antigravity install     write .agents/rules + .agents/workflows + skill (Google Antigravity)"
-        )
-        print(
-            "  antigravity uninstall   remove .agents/rules, .agents/workflows, and skill"
-        )
-        print(
-            "  hermes install          write skill to ~/.hermes/skills/graphify/ (Hermes)"
-        )
-        print("  hermes uninstall        remove skill from ~/.hermes/skills/graphify/")
-        print(
-            "  kiro install            write skill to .kiro/skills/graphify/ + steering file (Kiro IDE/CLI)"
-        )
-        print("  kiro uninstall          remove skill + steering file")
-        print("  pi install              write skill to ~/.pi/agent/skills/graphify/ (Pi coding agent)")
-        print("  pi uninstall            remove skill from ~/.pi/agent/skills/graphify/")
-        print("  devin install           write skill to ~/.config/devin/skills/graphify/ (Devin CLI)")
-        print("  devin uninstall         remove skill from ~/.config/devin/skills/graphify/")
+        print("  codex install           write Dreamliner section to AGENTS.md (Codex)")
+        print("  codex uninstall         remove Dreamliner section from AGENTS.md")
+        print()
+        print("Claude Code, Cursor, Gemini CLI, and other hosts are not first-class")
+        print("in this Dreamliner fork. Use `graphify install --platform codex`.")
         print()
         return
 

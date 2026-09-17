@@ -961,6 +961,12 @@ def build_from_json(extraction: dict, *, directed: bool = False, root: str | Pat
         breakdown = "; ".join(
             f"{len(errs)}x {cause} (e.g. {errs[0]})" for cause, errs in by_cause.items()
         )
+        from .validate import format_validation_failure
+
+        print(
+            format_validation_failure(real_errors, source="extraction JSON"),
+            file=sys.stderr,
+        )
         print(
             f"[graphify] Extraction warning ({len(real_errors)} issues): {breakdown}",
             file=sys.stderr,

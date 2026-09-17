@@ -158,8 +158,8 @@ def test_codebuddy_install_prints_no_change_on_second_run(tmp_path, capsys):
 
 
 def test_codebuddy_install_hint_git_add(tmp_path, capsys):
-    """Project-scoped install via CLI prints a git add hint."""
-    from graphify.__main__ import main
+    """Project-scoped library install does not raise."""
+    from graphify.__main__ import codebuddy_install
     home = tmp_path / "home"
     project = tmp_path / "project"
     project.mkdir()
@@ -167,9 +167,8 @@ def test_codebuddy_install_hint_git_add(tmp_path, capsys):
     try:
         import os
         os.chdir(project)
-        with patch("graphify.__main__.Path.home", return_value=home):
-            sys.argv = ["graphify", "codebuddy", "install"]
-            main()
+        with patch("graphify.install.Path.home", return_value=home):
+            codebuddy_install(project)
     finally:
         import os
         os.chdir(old_cwd)
@@ -236,33 +235,35 @@ def test_codebuddy_uninstall_preserves_other_content(tmp_path):
 
 def test_uninstall_all_removes_codebuddy_md(tmp_path, monkeypatch):
     """graphify uninstall must clean up CODEBUDDY.md."""
-    from graphify.__main__ import main
+    from graphify.__main__ import codebuddy_install, main
     home = tmp_path / "home"
     project = tmp_path / "project"
     project.mkdir()
     monkeypatch.chdir(project)
-    with patch("graphify.__main__.Path.home", return_value=home):
-        monkeypatch.setattr(sys, "argv", ["graphify", "codebuddy", "install"])
-        main()
+    with patch("graphify.install.Path.home", return_value=home):
+        codebuddy_install(project)
         md = _codebuddy_md_path(project)
         assert md.exists()
-        monkeypatch.setattr(sys, "argv", ["graphify", "uninstall"])
-        main()
+    with patch("graphify.__main__.Path.home", return_value=home):
+        with patch("graphify.install.Path.home", return_value=home):
+            monkeypatch.setattr(sys, "argv", ["graphify", "uninstall"])
+            main()
     assert not md.exists()
 
 
 def test_uninstall_all_removes_codebuddy_hook(tmp_path, monkeypatch):
     """graphify uninstall must clean up .codebuddy/settings.json hooks."""
-    from graphify.__main__ import main
+    from graphify.__main__ import codebuddy_install, main
     home = tmp_path / "home"
     project = tmp_path / "project"
     project.mkdir()
     monkeypatch.chdir(project)
+    with patch("graphify.install.Path.home", return_value=home):
+        codebuddy_install(project)
     with patch("graphify.__main__.Path.home", return_value=home):
-        monkeypatch.setattr(sys, "argv", ["graphify", "codebuddy", "install"])
-        main()
-        monkeypatch.setattr(sys, "argv", ["graphify", "uninstall"])
-        main()
+        with patch("graphify.install.Path.home", return_value=home):
+            monkeypatch.setattr(sys, "argv", ["graphify", "uninstall"])
+            main()
     settings_path = _settings_path(project)
     if settings_path.exists():
         settings = json.loads(settings_path.read_text())
@@ -298,18 +299,15 @@ def test_codebuddy_platform_skill_destination_project_scope(tmp_path):
 
 
 def test_codebuddy_in_main_help_text(capsys, monkeypatch):
-    """`graphify --help` must list codebuddy in the platform list and per-platform section."""
+    """`graphify --help` is Codex-only; CodeBuddy is not first-class in this fork."""
     from graphify.__main__ import main
     monkeypatch.setattr(sys, "argv", ["graphify", "--help"])
     main()
     captured = capsys.readouterr().out
-    # codebuddy should appear in the top-level platform list
-    assert "|codebuddy)" in captured or "codebuddy" in captured, (
-        "codebuddy missing from `graphify --help` platform list"
-    )
-    # codebuddy install / uninstall should appear in the per-platform section
-    assert "codebuddy install" in captured, "`codebuddy install` line missing from help text"
-    assert "codebuddy uninstall" in captured, "`codebuddy uninstall` line missing from help text"
+    assert "Dreamliner" in captured
+    assert "graphify install --platform codex" in captured
+    assert "codebuddy install" not in captured
+    assert "not first-class" in captured
 
 
 def test_codebuddy_skill_file_exists_in_package():

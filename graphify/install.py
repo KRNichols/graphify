@@ -1,9 +1,12 @@
-"""graphify install/uninstall subsystem.
+"""Dreamliner install/uninstall subsystem (Codex-only first-class path).
 
-The per-platform skill/hook installers and uninstallers, extracted verbatim from
+The per-platform skill/hook installers and uninstallers, extracted from
 graphify/__main__.py so the CLI dispatcher (`main`) stays readable. Import path is
-unchanged: `graphify.__main__` re-exports every name defined here, so
-`from graphify.__main__ import claude_install` (etc.) keeps working.
+unchanged: `graphify.__main__` re-exports every name defined here.
+
+This Dreamliner fork treats Codex as the only first-class host. Other host
+installers remain as library helpers for tests and leftover uninstalls, but the
+user-facing CLI defaults to — and documents — `install --platform codex`.
 
 Lives at graphify/install.py (same package dir as __main__) on purpose: the
 installers resolve packaged assets via `Path(__file__).parent / "always_on"` and
@@ -31,6 +34,13 @@ except Exception:
 
 from graphify.paths import GRAPHIFY_OUT as _GRAPHIFY_OUT
 from graphify.paths import os_replace_with_fallback as _os_replace_with_fallback
+
+# Dreamliner (this fork): Codex is the only first-class install target.
+# Library helpers for other hosts stay importable; the CLI gates them.
+PRODUCT_NAME = "Dreamliner"
+FIRST_CLASS_PLATFORM = "codex"
+CODEX_INVOKE = "$dreamliner"
+_CODEX_INSTALL_URL = "https://github.com/openai/codex"
 
 
 def _write_version_stamp(skill_dst: Path, version: str) -> None:
@@ -75,8 +85,9 @@ def _always_on(basename: str) -> str:
         # import (which would brick every CLI command, not just install). Reached
         # only by an install/integration path that actually needs this block.
         raise RuntimeError(
-            f"graphify install is incomplete: missing always-on block '{basename}' "
-            f"at {path}. Reinstall graphifyy (e.g. `uv tool install --reinstall graphifyy`)."
+            f"Dreamliner install is incomplete: missing always-on block '{basename}' "
+            f"at {path}. Reinstall graphifyy "
+            f"(e.g. `uv tool install --reinstall graphifyy` from this repo)."
         ) from exc
 def _platform_skill_destination(platform_name: str, *, project: bool = False, project_dir: Path | None = None) -> Path:
     """Return the skill destination for a platform and scope."""
@@ -204,7 +215,14 @@ def _copy_skill_file(platform_name: str, *, project: bool = False, project_dir: 
     skill_file = "skill.md" if platform_name == "gemini" else _PLATFORM_CONFIG[platform_name]["skill_file"]
     skill_src = Path(__file__).parent / skill_file
     if not skill_src.exists():
-        print(f"error: {skill_file} not found in package - reinstall graphify", file=sys.stderr)
+        print(
+            f"error: {skill_file} not found in this Dreamliner install.\n"
+            f"  The Codex skill is missing from the package.\n"
+            f"  Fix: reinstall from this repo, e.g.\n"
+            f"    uv tool install --reinstall --from . graphifyy\n"
+            f"  then re-run: graphify install --platform {FIRST_CLASS_PLATFORM}",
+            file=sys.stderr,
+        )
         sys.exit(1)
 
     refs_src = _packaged_skill_refs_dir(platform_name)
@@ -212,8 +230,11 @@ def _copy_skill_file(platform_name: str, *, project: bool = False, project_dir: 
         # Progressive platform declared a references bundle that is missing from
         # the package. Fail loud rather than silently shipping an empty sidecar.
         print(
-            f"error: references for '{platform_name}' not found in package "
-            f"({refs_src}) - reinstall graphify",
+            f"error: Dreamliner skill references for '{platform_name}' are missing "
+            f"({refs_src}).\n"
+            f"  Fix: reinstall from this repo "
+            f"(`uv tool install --reinstall --from . graphifyy`) "
+            f"and re-run `graphify install --platform {FIRST_CLASS_PLATFORM}`.",
             file=sys.stderr,
         )
         sys.exit(1)
@@ -631,7 +652,7 @@ def _remove_marker_section(content: str, marker: str, boundary_prefix: str = "##
 
 
 def _print_banner() -> None:
-    """Amber brain banner on graphify install. TTY-only, never raises."""
+    """Dreamliner banner on install. TTY-only, never raises."""
     if not sys.stdout.isatty():
         return
     try:
@@ -644,21 +665,115 @@ def _print_banner() -> None:
         D = "\033[38;5;130m"
         R = "\033[0m"
         print(f"""{A}
-  ╭──◉──╮     ╭──◉──╮
- ╱  ◉   ◉ ╲ ╱ ◉   ◉  ╲
-│   ◉─◉─◉  ◉  ◉─◉─◉   │
-│    ◉   ◉ │ ◉   ◉    │
-│   ◉─◉─◉  ◉  ◉─◉─◉   │
- ╲  ◉   ◉ ╱ ╲ ◉   ◉  ╱
-  ╰──◉──╯     ╰──◉──╯
-           ◉
-
-  █▀▀ █▀█ ▄▀█ █▀█ █ █ █ █▀▀ █▄█
-  █▄█ █▀▄ █▀█ █▀▀ █▀█ █ █▀   █{D}  {__version__}{R}
+  Dreamliner{D}  {__version__}{R}
+  Codex-only knowledge graph for your repo
 """)
     except Exception:
         pass
-def install(platform: str = "claude", *, project: bool = False, project_dir: Path | None = None) -> None:
+
+
+def _codex_config_path() -> Path:
+    return Path.home() / ".codex" / "config.toml"
+
+
+def _codex_multi_agent_enabled(config_text: str) -> bool:
+    """Best-effort parse of Codex ``[features].multi_agent``.
+
+    Codex needs ``multi_agent = true`` under ``[features]`` for parallel
+    ``spawn_agent`` extraction. A missing or unreadable file is treated as
+    unset (caller decides whether that is fatal).
+    """
+    in_features = False
+    for raw in config_text.splitlines():
+        line = raw.split("#", 1)[0].strip()
+        if not line:
+            continue
+        if line.startswith("[") and line.endswith("]"):
+            in_features = line[1:-1].strip().lower() == "features"
+            continue
+        if not in_features or "=" not in line:
+            continue
+        key, _, value = line.partition("=")
+        if key.strip() == "multi_agent":
+            return value.strip().strip('"').strip("'").lower() in {"true", "1", "yes"}
+    return False
+
+
+def check_codex_prerequisites(*, require_cli: bool = False) -> list[str]:
+    """Return actionable problems on the Codex install/run path.
+
+    Library callers (and tests) get the list. The CLI prints them. Nothing
+    here deletes validation — extraction still goes through
+    ``graphify.validate.validate_extraction`` / ``assert_valid``.
+    """
+    problems: list[str] = []
+    if shutil.which("codex") is None:
+        problems.append(
+            "Codex CLI not found on PATH.\n"
+            f"  Dreamliner requires the Codex CLI ({_CODEX_INSTALL_URL}).\n"
+            "  Install Codex, then confirm with:  codex --version\n"
+            "  Re-open this terminal so `codex` is on PATH, then re-run:\n"
+            f"    graphify install --platform {FIRST_CLASS_PLATFORM}"
+        )
+        if require_cli:
+            return problems
+    cfg = _codex_config_path()
+    if not cfg.exists():
+        problems.append(
+            f"Codex config not found at {cfg}.\n"
+            "  Parallel extraction needs multi-agent mode. Create the file with:\n"
+            "\n"
+            "    [features]\n"
+            "    multi_agent = true\n"
+            "\n"
+            "  Then restart Codex and re-run `graphify install`."
+        )
+        return problems
+    try:
+        text = cfg.read_text(encoding="utf-8")
+    except OSError as exc:
+        problems.append(
+            f"Could not read Codex config {cfg}: {exc}\n"
+            "  Fix the file permissions or recreate it with:\n"
+            "\n"
+            "    [features]\n"
+            "    multi_agent = true\n"
+        )
+        return problems
+    if not _codex_multi_agent_enabled(text):
+        problems.append(
+            f"Codex config {cfg} does not enable multi_agent.\n"
+            "  Add this block (or set multi_agent = true under [features]):\n"
+            "\n"
+            "    [features]\n"
+            "    multi_agent = true\n"
+            "\n"
+            "  Restart Codex so `spawn_agent` is available, then retry."
+        )
+    return problems
+
+
+def _print_codex_prerequisite_warnings(problems: list[str]) -> None:
+    for problem in problems:
+        print(f"warning: {problem}", file=sys.stderr)
+
+
+def reject_non_codex_platform(platform_name: str) -> None:
+    """User-facing gate: this fork does not install other hosts."""
+    print(
+        f"error: Dreamliner is Codex-only (got platform {platform_name!r}).\n"
+        "  Claude Code, Cursor, Gemini CLI, and other hosts are not first-class here.\n"
+        "  Use one of:\n"
+        "    graphify install\n"
+        f"    graphify install --platform {FIRST_CLASS_PLATFORM}\n"
+        "    graphify install --project\n"
+        f"    graphify {FIRST_CLASS_PLATFORM} install --project",
+        file=sys.stderr,
+    )
+    sys.exit(2)
+
+
+def install(platform: str = "codex", *, project: bool = False, project_dir: Path | None = None) -> None:
     _print_banner()
     platform = _canonical_platform(platform)
     if platform == "gemini":
@@ -672,7 +787,8 @@ def install(platform: str = "claude", *, project: bool = False, project_dir: Pat
         platform = "antigravity-windows"
     if platform not in _PLATFORM_CONFIG:
         print(
-            f"error: unknown platform '{platform}'. Choose from: {', '.join(_PLATFORM_CONFIG)}, gemini, cursor",
+            f"error: unknown platform '{platform}'. Dreamliner first-class install is Codex only.\n"
+            f"  Use: graphify install --platform {FIRST_CLASS_PLATFORM}",
             file=sys.stderr,
         )
         sys.exit(1)
@@ -728,20 +844,24 @@ def install(platform: str = "claude", *, project: bool = False, project_dir: Pat
     if project:
         _print_project_git_add_hint([_project_scope_root(skill_dst, project_dir)])
 
+    if platform == FIRST_CLASS_PLATFORM:
+        _print_codex_prerequisite_warnings(check_codex_prerequisites())
     print()
-    print("Done. Open your AI coding assistant and type:")
+    print(f"Done. Open Codex and type:")
     print()
-    print("  /graphify .")
+    print(f"  {CODEX_INVOKE} .")
     print()
-    print("Prefer a hosted version? Early access to the graphify platform is")
-    print("open free before the public v1 launch: https://app.graphify.com")
+    print("Dreamliner is Codex-only. Other hosts are not first-class in this fork.")
     print()
 def _print_install_usage() -> None:
-    platforms = ", ".join([*_PLATFORM_CONFIG, "gemini", "cursor"])
-    print("Usage: graphify install [--project] [--strict] [--platform P|P]")
-    print(f"Platforms: {platforms}")
-    print("  --strict  block the first raw file read per session until one "
-          "`graphify query` runs (Claude Code project hook only; needs --project)")
+    print("Usage: graphify install [--project] [--platform codex]")
+    print("Platforms: codex   (Dreamliner first-class path; default)")
+    print()
+    print("  graphify install                 install the Dreamliner Codex skill")
+    print("  graphify install --project       project-scoped skill + AGENTS.md")
+    print("  graphify install --platform codex")
+    print()
+    print("This fork does not install Claude Code, Cursor, Gemini, or other hosts.")
 _CLAUDE_MD_MARKER = "## graphify"
 _CODEBUDDY_MD_MARKER = "## graphify"
 _AGENTS_MD_MARKER = "## graphify"
@@ -791,8 +911,11 @@ def gemini_install(project_dir: Path | None = None, *, project: bool = False) ->
 def _refuse_to_modify(settings_path: Path) -> "NoReturn":
     """Abort a hook install rather than clobber a config file we can't parse (#2167)."""
     print(
-        f"[graphify] refusing to modify {settings_path}: not valid JSON "
-        "(fix or move it and re-run)",
+        f"error: Dreamliner will not overwrite {settings_path} because it is not valid JSON.\n"
+        "  The file may be truncated, commented, or not an object.\n"
+        "  Fix: move it aside and re-run install, or repair the JSON and retry:\n"
+        f"    mv {settings_path} {settings_path}.bak\n"
+        f"    graphify install --platform {FIRST_CLASS_PLATFORM}",
         file=sys.stderr,
     )
     sys.exit(1)
@@ -1573,16 +1696,21 @@ def _agents_install(project_dir: Path, platform: str, project: bool = False) -> 
         _install_kilo_plugin(project_dir or Path("."))
 
     print()
-    print(
-        f"{platform.capitalize()} will now check the knowledge graph before answering"
-    )
-    print("codebase questions and rebuild it after code changes.")
-    if platform not in ("codex", "opencode", "kilo"):
-        print()
-        print("Note: unlike Claude Code, there is no PreToolUse hook equivalent for")
+    if platform == FIRST_CLASS_PLATFORM:
+        print("Codex will now use the Dreamliner graph before answering")
+        print("codebase questions and rebuild it after code changes (via AGENTS.md).")
+        _print_codex_prerequisite_warnings(check_codex_prerequisites())
+    else:
         print(
-            f"{platform.capitalize()} — the AGENTS.md rules are the always-on mechanism."
+            f"{platform.capitalize()} will now check the knowledge graph before answering"
         )
+        print("codebase questions and rebuild it after code changes.")
+        if platform not in ("codex", "opencode", "kilo"):
+            print()
+            print("Note: unlike Claude Code, there is no PreToolUse hook equivalent for")
+            print(
+                f"{platform.capitalize()} — the AGENTS.md rules are the always-on mechanism."
+            )
 def _amp_legacy_cleanup() -> None:
     """Best-effort removal of the pre-fix ~/.amp/skills/graphify install dir.
 
@@ -2106,8 +2234,8 @@ def dispatch_install_cli(cmd: str) -> bool:
     if cmd not in _CLI_INSTALL_COMMANDS:
         return False
     if cmd == "install":
-        # Default to windows platform on Windows, claude elsewhere
-        default_platform = "windows" if platform.system() == "Windows" else "claude"
+        # Dreamliner: Codex is the default and only first-class platform.
+        default_platform = FIRST_CLASS_PLATFORM
         selected_platform: str | None = None
         project_scope = False
         strict = False
@@ -2150,14 +2278,16 @@ def dispatch_install_cli(cmd: str) -> bool:
                     sys.exit(1)
                 selected_platform = arg
                 i += 1
-        chosen_platform = selected_platform or default_platform
+        chosen_platform = _canonical_platform(selected_platform or default_platform)
+        if chosen_platform != FIRST_CLASS_PLATFORM:
+            reject_non_codex_platform(chosen_platform)
         if project_scope:
             _project_install(chosen_platform, Path("."), strict=strict)
         else:
             if strict:
                 print(
-                    "note: --strict applies to the project PreToolUse hook; run "
-                    "`graphify install --project --strict` or `graphify claude install --strict`.",
+                    "note: --strict is a Claude Code hook flag and is ignored on the "
+                    "Dreamliner Codex path. Use `graphify install --project`.",
                     file=sys.stderr,
                 )
             install(platform=chosen_platform)
@@ -2193,6 +2323,9 @@ def dispatch_install_cli(cmd: str) -> bool:
                 _project_uninstall_all(Path("."))
         else:
             uninstall_all(purge=purge)
+    elif cmd != FIRST_CLASS_PLATFORM:
+        # graphify claude|cursor|gemini|... install is not first-class here.
+        reject_non_codex_platform(cmd)
     elif cmd == "claude":
         subcmd = sys.argv[2] if len(sys.argv) > 2 else ""
         if subcmd == "install":
