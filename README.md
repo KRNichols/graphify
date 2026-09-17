@@ -1,5 +1,5 @@
 <p align="center">
-  <a href="https://graphify.com"><img src="https://raw.githubusercontent.com/Graphify-Labs/graphify/v8/docs/graphify-logo.png" width="480" height="252" alt="Graphify"/></a>
+  <a href="https://graphify.com"><img src="https://raw.githubusercontent.com/Graphify-Labs/graphify/v8/docs/graphify-logo.png" width="480" height="252" alt="Dreamliner"/></a>
 </p>
 
 <p align="center">
@@ -24,13 +24,13 @@
 </p>
 
 <p align="center">
-  <b>Early access to the graphify platform is open before the public v1 launch: <a href="https://app.graphify.com/login">app.graphify.com</a></b>
+  <b>Dreamliner</b> — knowledge graphs for AI coding assistants (Codex-first)
 </p>
 
-Type `/graphify` in your AI coding assistant and it maps your entire project (code, docs, PDFs, images, videos) into a **knowledge graph** you can **query instead of grepping** through files.
+Type `$dreamliner` in Codex (or `/graphify` in Claude Code) and it maps your entire project (code, docs, PDFs, images, videos) into a **knowledge graph** you can **query instead of grepping** through files.
 
 - **Code maps for free, fully local.** Code is parsed with tree-sitter AST: deterministic, no LLM, nothing leaves your machine. (Docs, PDFs, images and video use your assistant's model, or a configured API key, for a semantic pass.)
-- **Every edge is explained.** Each connection is tagged `EXTRACTED` (explicit in the source) or `INFERRED` (resolved by graphify), so you can tell what was read directly from what was inferred.
+- **Every edge is explained.** Each connection is tagged `EXTRACTED` (explicit in the source) or `INFERRED` (resolved by Dreamliner), so you can tell what was read directly from what was inferred.
 - **Not a vector index.** No embeddings, no vector store: a real graph you traverse. Ask a question, trace the path between two things, or explain one concept.
 
 > Want this always-on, updating in the background across your code, docs, and meetings rather than only on demand? That is what we are building at **[graphify.com](https://graphify.com)**, and early access is open now at **[app.graphify.com](https://app.graphify.com/login)**.
@@ -39,21 +39,33 @@ Type `/graphify` in your AI coding assistant and it maps your entire project (co
   <img src="https://raw.githubusercontent.com/Graphify-Labs/graphify/v8/docs/graph-hero.png" alt="graphify's interactive graph.html showing the FastAPI codebase as a force-directed knowledge graph with a legend of detected communities" width="900">
 </p>
 <p align="center">
-  <em>The FastAPI codebase mapped by graphify. Every node is a concept, colors are detected communities, and the whole thing is clickable in graph.html.</em>
+  <em>The FastAPI codebase mapped by Dreamliner. Every node is a concept, colors are detected communities, and the whole thing is clickable in graph.html.</em>
 </p>
 
-**Get started** (30 seconds):
+**Get started with Codex** (clean machine → skill → run):
 
 ```bash
-uv tool install graphifyy      # install the CLI (or: pipx install graphifyy)
-graphify install               # register the skill with your AI assistant
+# 1. Install the CLI (PyPI package name is still graphifyy)
+uv tool install graphifyy      # or: pipx install graphifyy
+
+# 2. Register the Dreamliner skill with Codex
+dreamliner install --platform codex
 ```
 
-Then, in your AI assistant:
+Enable parallel extraction in `~/.codex/config.toml`:
+
+```toml
+[features]
+multi_agent = true
+```
+
+Then, in Codex:
 
 ```
-/graphify .
+$dreamliner .
 ```
+
+`graphify` remains a compatibility alias for every `dreamliner` command. Other assistants still use `/graphify` — [pick your platform](#install).
 
 That's it. You get **three files**:
 
@@ -74,10 +86,10 @@ graphify-out/
   <img src="https://raw.githubusercontent.com/Graphify-Labs/graphify/v8/docs/demo-path.svg" alt="graphify path query: a terminal asks for the shortest path between FastAPI and ModelField, and the answer lights up hop by hop across the knowledge graph" width="900">
 </p>
 
-Once the graph is built you query it instead of reading files. Real output, graphify run on the FastAPI codebase shown above:
+Once the graph is built you query it instead of reading files. Real output, Dreamliner run on the FastAPI codebase shown above:
 
 ```text
-$ graphify explain "APIRouter"
+$ dreamliner explain "APIRouter"
 Node: APIRouter
   Source:    routing.py L2210
   Community: 2
@@ -90,12 +102,12 @@ Connections (47):
   <-- __init__.py [imports] [EXTRACTED]
   ...
 
-$ graphify path "FastAPI" "ModelField"
+$ dreamliner path "FastAPI" "ModelField"
 Shortest path (3 hops):
   FastAPI --uses--> DefaultPlaceholder <--references-- get_request_handler() --references--> ModelField
 ```
 
-Every edge carries a **confidence tag** (`EXTRACTED` = explicit in the source, `INFERRED` = derived by resolution), so you can tell what was read directly from what was inferred. `graphify query "<question>"` returns a scoped subgraph for a plain-language question, and `graphify path A B` traces how any two things connect.
+Every edge carries a **confidence tag** (`EXTRACTED` = explicit in the source, `INFERRED` = derived by resolution), so you can tell what was read directly from what was inferred. `dreamliner query "<question>"` returns a scoped subgraph for a plain-language question, and `dreamliner path A B` traces how any two things connect.
 
 ---
 
@@ -117,7 +129,7 @@ What you get out of the box:
 
 ## Benchmarks
 
-| Benchmark | Metric | graphify | Field |
+| Benchmark | Metric | Dreamliner | Field |
 |---|---|---|---|
 | LOCOMO (n=300) | recall@10 | **0.497** | mem0 0.048, supermemory 0.149 |
 | LOCOMO (n=300) | QA accuracy | 45.3% | supermemory 49.7%, mem0 27.3% |
@@ -157,12 +169,12 @@ curl -LsSf https://astral.sh/uv/install.sh | sh
 
 ## Install
 
-> **Official package:** The PyPI package is `graphifyy` (double-y). Other `graphify*` packages on PyPI are not affiliated. The CLI command is still `graphify`.
+> **Official package:** The PyPI package is still `graphifyy` (double-y). The product and preferred CLI are **Dreamliner** (`dreamliner`). `graphify` remains a compatibility alias. Other `graphify*` packages on PyPI are not affiliated.
 
 **Step 1 — install the package:**
 
 ```bash
-# Recommended (isolated env; if 'graphify' isn't found after, run: uv tool update-shell):
+# Recommended (isolated env; if 'dreamliner' isn't found after, run: uv tool update-shell):
 uv tool install graphifyy
 
 # Alternatives:
@@ -173,25 +185,26 @@ pip install graphifyy  # may need PATH setup — see note below
 **Step 2 — register the skill with your AI assistant:**
 
 ```bash
-graphify install
+dreamliner install                  # Claude Code (default)
+dreamliner install --platform codex # Codex
 ```
 
-That's it. Open your AI assistant and type `/graphify .`
+That's it. In Codex type `$dreamliner .` — in Claude Code type `/graphify .`.
 
 To install the assistant skill into the current repository instead of your user
 profile, add `--project`:
 
 ```bash
-graphify install --project
-graphify install --project --platform codex
+dreamliner install --project
+dreamliner install --project --platform codex
 ```
 
 Project-scoped installs write under the current directory, for example
-`.claude/skills/graphify/SKILL.md` or `.agents/skills/graphify/SKILL.md` (plus a
+`.claude/skills/graphify/SKILL.md` or `.codex/skills/dreamliner/SKILL.md` (plus a
 `references/` sidecar the skill loads on demand), and
 print a `git add` hint for files that can be committed.
 Per-platform commands that support project-scoped installs accept the same flag,
-for example `graphify claude install --project` or `graphify codex install --project`.
+for example `dreamliner claude install --project` or `dreamliner codex install --project`.
 
 > **PowerShell note:** Use `graphify .` not `/graphify .` — the leading slash is a path separator in PowerShell.
 
@@ -213,7 +226,7 @@ for example `graphify claude install --project` or `graphify codex install --pro
 | Claude Code (Linux/Mac) | `graphify install` |
 | Claude Code (Windows) | `graphify install` (auto-detected) or `graphify install --platform windows` |
 | CodeBuddy | `graphify install --platform codebuddy` |
-| Codex | `graphify install --platform codex` |
+| Codex | `dreamliner install --platform codex` (invoke: `$dreamliner`) |
 | OpenCode | `graphify install --platform opencode` |
 | Kilo Code | `graphify install --platform kilo` |
 | GitHub Copilot CLI | `graphify install --platform copilot` |
@@ -238,7 +251,7 @@ Codex users also need `multi_agent = true` under `[features]` in `~/.codex/confi
 
 `--platform agents` (alias `--platform skills`) targets the generic cross-framework [Agent-Skills](https://github.com/anthropics/skills) locations: the spec's user-global `~/.agents/skills/` (read by `npx skills` and spec-compliant frameworks) for a global install, and `./.agents/skills/` for a project (`--project`) install. The bare `graphify install` stays single-platform (Claude Code) by design — use the named `agents` platform when you want the skill discoverable by any framework that reads `.agents/skills`.
 
-> Codex uses `$graphify` instead of `/graphify`.
+> Codex uses `$dreamliner` (Dreamliner), not Claude's `/graphify`.
 
 </details>
 
@@ -285,7 +298,7 @@ Run this once in your project after building a graph:
 |----------|---------|
 | Claude Code | `graphify claude install` |
 | CodeBuddy | `graphify codebuddy install` |
-| Codex | `graphify codex install` |
+| Codex | `dreamliner codex install` |
 | OpenCode | `graphify opencode install` |
 | Kilo Code | `graphify kilo install` |
 | GitHub Copilot CLI | `graphify copilot install` |
@@ -315,7 +328,7 @@ This writes a small config file that tells your assistant to consult the knowled
 
 **CodeBuddy** does the same two things as Claude Code: writes a `CODEBUDDY.md` section telling CodeBuddy to read `graphify-out/GRAPH_REPORT.md` before answering architecture questions, and installs `PreToolUse` hooks (`.codebuddy/settings.json`) that fire before Bash search commands and file reads, nudging toward `graphify query` instead.
 
-**Codex** writes to `AGENTS.md`, which is what actually carries the always-on graph guidance on this platform. `graphify codex install` also registers a `PreToolUse` hook in `.codex/hooks.json` (`graphify hook-check`), but that entry is deliberately a **no-op**: Codex Desktop rejects `hookSpecificOutput.additionalContext` on `PreToolUse`, so emitting a nudge there would break Bash tool calls. Unlike Claude Code, where the hook (`graphify hook-guard`) does the nudging, on Codex the hook fires and intentionally does nothing, and `AGENTS.md` is the always-on mechanism.
+**Codex** writes to `AGENTS.md`, which is what actually carries the always-on Dreamliner guidance on this platform. `dreamliner codex install` also registers a `PreToolUse` hook in `.codex/hooks.json` (`graphify hook-check`), but that entry is deliberately a **no-op**: Codex Desktop rejects `hookSpecificOutput.additionalContext` on `PreToolUse`, so emitting a nudge there would break Bash tool calls. Unlike Claude Code, where the hook (`graphify hook-guard`) does the nudging, on Codex the hook fires and intentionally does nothing, and `AGENTS.md` is the always-on mechanism. The skill lives at `.codex/skills/dreamliner/` and is invoked as `$dreamliner`.
 
 **Kilo Code** installs the Graphify skill to `~/.config/kilo/skills/graphify/SKILL.md` and a native `/graphify` command to `~/.config/kilo/command/graphify.md`. `graphify kilo install` also writes `AGENTS.md` plus a native `tool.execute.before` plugin (`.kilo/plugins/graphify.js` + `.kilo/kilo.json` or `.kilo/kilo.jsonc` registration) so Kilo gets the same always-on graph reminder behavior through native `.kilo` config.
 

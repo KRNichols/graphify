@@ -162,7 +162,7 @@ def test_install_platform_agents_project_writes_dot_agents(tmp_path):
 
 def test_agents_subcommand_install_also_wires_agents_md(tmp_path):
     """`graphify agents install` is the amp-twin: skill at ~/.agents/skills PLUS a
-    `## graphify` section in AGENTS.md (so the rendered hooks reference, which
+    `## Dreamliner` section in AGENTS.md (so the rendered hooks reference, which
     points at `graphify agents install`, stays honest)."""
     home = tmp_path / "home"
     cwd = tmp_path / "cwd"
@@ -175,13 +175,13 @@ def test_agents_subcommand_install_also_wires_agents_md(tmp_path):
     agents_md = cwd / "AGENTS.md"
     assert skill.exists()
     assert agents_md.exists()
-    assert "## graphify" in agents_md.read_text(encoding="utf-8")
+    assert "## Dreamliner" in agents_md.read_text(encoding="utf-8")
 
     _run(cwd, ["agents", "uninstall"], home)
     assert not skill.exists()
     # The section is stripped unconditionally: the file is either removed (it held
     # only our section) or no longer contains the marker.
-    assert not agents_md.exists() or "## graphify" not in agents_md.read_text(encoding="utf-8")
+    assert not agents_md.exists() or "## Dreamliner" not in agents_md.read_text(encoding="utf-8")
 
 
 def test_agents_subcommand_install_is_idempotent(tmp_path):
@@ -195,7 +195,7 @@ def test_agents_subcommand_install_is_idempotent(tmp_path):
     _run(cwd, ["agents", "install"], home)
 
     body = (cwd / "AGENTS.md").read_text(encoding="utf-8")
-    assert body.count("## graphify") == 1, "AGENTS.md gained a duplicate graphify section"
+    assert body.count("## Dreamliner") == 1, "AGENTS.md gained a duplicate Dreamliner section"
 
 
 def test_skills_subcommand_is_the_agents_subcommand(tmp_path):
@@ -212,12 +212,12 @@ def test_skills_subcommand_is_the_agents_subcommand(tmp_path):
     assert skill.exists()
     assert (skill.parent / "references" / "extraction-spec.md").exists()
     assert agents_md.exists()
-    assert "## graphify" in agents_md.read_text(encoding="utf-8")
+    assert "## Dreamliner" in agents_md.read_text(encoding="utf-8")
 
     # The `skills` alias of the uninstall subcommand tears it back down.
     _run(cwd, ["skills", "uninstall"], home)
     assert not skill.exists()
-    assert not agents_md.exists() or "## graphify" not in agents_md.read_text(encoding="utf-8")
+    assert not agents_md.exists() or "## Dreamliner" not in agents_md.read_text(encoding="utf-8")
 
 
 # --- bare install is unchanged -------------------------------------------------
