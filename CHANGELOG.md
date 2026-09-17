@@ -6,6 +6,8 @@ Full release notes with details on each version: [GitHub Releases](https://githu
 
 - Product: this fork is now **Dreamliner**, a Codex-only variant. The skill is `$dreamliner`, the CLI is `dreamliner` (`graphify` remains a compatibility alias), and docs/install no longer treat Claude Code, Cursor, Gemini CLI, or other hosts as first-class. The graph engine is unchanged (`import graphify`, `graphify-out/`).
 - Fix: query/path/explain/affected/god-nodes now print actionable errors for a missing, empty, or corrupt graph instead of a stack trace.
+- Fix: `dreamliner extract . --code-only --no-viz` writes `graphify-out/GRAPH_REPORT.md` (deterministic hub labels) in addition to `graph.json`. Machine-ready extract no longer depends on a follow-up `cluster-only`.
+- Docs: clean-machine and skill Step 1 install URLs pin this PR branch (`@cursor/dreamliner-codex-rebrand-5833`) and no longer fall back to PyPI `graphifyy` / `dreamliner`.
 
 ## 0.9.63 (2026-09-16)
 

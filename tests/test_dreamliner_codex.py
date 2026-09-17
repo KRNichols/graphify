@@ -187,7 +187,12 @@ def test_skill_codex_has_no_multi_host_leftovers():
     assert "### Step 1 - Ensure Dreamliner is installed" in text
     assert "### Step 1 - Ensure graphify is installed" not in text
     assert "uv tool run --from graphifyy" not in text
+    assert "pip install graphifyy" not in text
+    assert "pip install dreamliner" not in text
+    assert "uv tool install --upgrade dreamliner" not in text
     assert "git+https://github.com/KRNichols/graphify.git@cursor/dreamliner-codex-rebrand-5833" in text
+    leftover = Path(__file__).resolve().parents[1] / "graphify" / "command-kilo.md"
+    assert not leftover.exists()
 
 
 def test_readme_has_clean_machine_runbook():

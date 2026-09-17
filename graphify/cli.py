@@ -3219,7 +3219,7 @@ def dispatch_command(cmd: str) -> None:
             print(
                 "Usage: dreamliner extract <path> [--backend gemini|kimi|claude|openai|deepseek|ollama] "
                 "[--model M] [--mode deep] [--out DIR|--output DIR] [--google-workspace] [--no-cluster] "
-                "[--no-gitignore] [--code-only] [--no-dedup] "
+                "[--no-gitignore] [--code-only] [--no-viz] [--no-dedup] "
                 "[--max-workers N] [--token-budget N] [--max-concurrency N] "
                 "[--api-timeout S] [--postgres DSN] [--cargo] [--allow-partial] [--timing]",
                 file=sys.stderr,
@@ -3244,6 +3244,7 @@ def dispatch_command(cmd: str) -> None:
         cli_cargo: bool = False
         cli_allow_partial: bool = False
         no_cluster = False
+        no_viz = False
         dedup_llm = False
         # --no-dedup: skip entity deduplication entirely. On an incremental
         # merge the fuzzy pass runs over the COMBINED node set (existing graph +
@@ -3318,6 +3319,8 @@ def dispatch_command(cmd: str) -> None:
                 out_dir = Path(a.split("=", 1)[1]); i += 1
             elif a == "--no-cluster":
                 no_cluster = True; i += 1
+            elif a == "--no-viz":
+                no_viz = True; i += 1
             elif a == "--dedup-llm":
                 dedup_llm = True; i += 1
             elif a == "--no-dedup":
@@ -4624,20 +4627,29 @@ def dispatch_command(cmd: str) -> None:
             detection_result = detection
         else:
             detection_result = {"warning": "extract mode — file stats not available"}
-        report = _generate_report(
-            G, communities, cohesion, labels, gods, surprises,
-            detection_result,
-            {
-                "input": merged["input_tokens"],
-                "output": merged["output_tokens"],
-            },
-            str(target),
-            suggested_questions=questions,
-            built_at_commit=_built_at,
-            learning=_llfr(graph_json_path),
-        )
         report_path = graphify_out / "GRAPH_REPORT.md"
-        report_path.write_text(report, encoding="utf-8")
+        try:
+            report = _generate_report(
+                G, communities, cohesion, labels, gods, surprises,
+                detection_result,
+                {
+                    "input": merged["input_tokens"],
+                    "output": merged["output_tokens"],
+                },
+                str(target),
+                suggested_questions=questions,
+                built_at_commit=_built_at,
+                learning=_llfr(graph_json_path),
+            )
+            report_path.write_text(report, encoding="utf-8")
+        except Exception as exc:
+            print(
+                f"error: Dreamliner could not write {report_path}: {exc}. "
+                "graph.json was written; retry `dreamliner extract . --force` "
+                "or `dreamliner cluster-only . --no-label --no-viz`.",
+                file=sys.stderr,
+            )
+            sys.exit(1)
         try:
             if has_path:
                 _save_manifest(_manifest_files, manifest_path=str(manifest_path), kind="both", root=target, scan_corpus=_scan_corpus, clear_semantic=_cleared_semantic, clear_ast=_cleared_ast or None)
@@ -4652,6 +4664,8 @@ def dispatch_command(cmd: str) -> None:
         )
         print(f"[graphify extract] wrote {analysis_path}")
         print(f"[graphify extract] wrote {report_path}")
+        if no_viz:
+            print("[dreamliner extract] --no-viz: skipped graph.html")
         if incremental_mode:
             _excl_note = f", {len(excluded_files)} excluded" if excluded_files else ""
             print(

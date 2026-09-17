@@ -535,11 +535,11 @@ def test_all_skill_files_exist_in_package():
         assert not (pkg / name).exists(), f"non-Codex leftover should not ship: {name}"
 
 
-def test_kilo_command_file_exists_in_package():
+def test_kilo_command_file_not_in_package():
     import graphify
 
     pkg = Path(graphify.__file__).parent
-    assert (pkg / "command-kilo.md").exists()
+    assert not (pkg / "command-kilo.md").exists()
 
 
 def test_claude_install_registers_claude_md(tmp_path):

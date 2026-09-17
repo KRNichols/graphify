@@ -49,18 +49,32 @@ def test_code_only_succeeds_without_key(tmp_path):
     assert any(str(l).startswith("hello") for l in labels), "code was indexed"
 
 
-def test_code_only_no_viz_writes_graph_report(tmp_path):
+def test_code_only_no_viz_writes_graph_report(tmp_path, monkeypatch, capsys):
     """Standalone extract --code-only --no-viz must write graph.json AND GRAPH_REPORT.md."""
     repo = _mixed_repo(tmp_path)
-    r = _run(repo, "--code-only", "--no-viz")
-    assert r.returncode == 0, f"--code-only --no-viz should succeed: {r.stderr}"
-    out = repo / "graphify-out"
-    assert (out / "graph.json").exists(), "code-only extract must write graph.json"
-    report = out / "GRAPH_REPORT.md"
-    assert report.exists(), "code-only extract must write GRAPH_REPORT.md"
+    import graphify.__main__ as mainmod
+
+    monkeypatch.chdir(repo)
+    monkeypatch.setattr(mainmod, "_check_skill_version", lambda *a, **k: None)
+    monkeypatch.setenv("GRAPHIFY_OUT", "graphify-out")
+    for key in _KEY_VARS:
+        monkeypatch.delenv(key, raising=False)
+    monkeypatch.setattr(
+        mainmod.sys, "argv", ["dreamliner", "extract", ".", "--code-only", "--no-viz"]
+    )
+    try:
+        mainmod.main()
+    except SystemExit as exc:
+        assert exc.code in (0, None), f"extract --code-only --no-viz failed: {exc}"
+    captured = capsys.readouterr().out
+    graph = repo / "graphify-out" / "graph.json"
+    report = repo / "graphify-out" / "GRAPH_REPORT.md"
+    assert graph.exists(), "code-only extract must write graph.json"
+    assert report.exists(), "GRAPH_REPORT.md must be written by extract, not only cluster-only"
     text = report.read_text(encoding="utf-8")
     assert "Graph Report" in text
     assert "God Nodes" in text
+    assert "GRAPH_REPORT.md" in captured
 
 
 def test_mixed_repo_without_key_errors_and_points_at_code_only(tmp_path):

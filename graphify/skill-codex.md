@@ -68,15 +68,12 @@ Only when the path is one or more `https://github.com/...` URLs, or several loca
 # Detect the correct Python interpreter (handles uv tool, pipx, venv, system installs)
 PYTHON=""
 DREAMLINER_BIN=$(command -v dreamliner 2>/dev/null || command -v graphify 2>/dev/null)
-# 1. uv tool installs — most reliable on modern Mac/Linux
+# 1. uv tool installs — Dreamliner first
 if [ -z "$PYTHON" ] && command -v uv >/dev/null 2>&1; then
     _UV_PY=$(uv tool run --from dreamliner python -c "import sys; print(sys.executable)" 2>/dev/null)
-    if [ -z "$_UV_PY" ]; then
-        _UV_PY=$(uv tool run --from git+https://github.com/KRNichols/graphify.git@cursor/dreamliner-codex-rebrand-5833 python -c "import sys; print(sys.executable)" 2>/dev/null)
-    fi
     if [ -n "$_UV_PY" ]; then PYTHON="$_UV_PY"; fi
 fi
-# 2. Read shebang from dreamliner/graphify binary (pipx and direct pip installs)
+# 2. Read shebang from the dreamliner binary (pipx and direct pip installs)
 if [ -z "$PYTHON" ] && [ -n "$DREAMLINER_BIN" ]; then
     _SHEBANG=$(head -1 "$DREAMLINER_BIN" | tr -d '#!')
     case "$_SHEBANG" in
@@ -88,17 +85,14 @@ fi
 if [ -z "$PYTHON" ]; then PYTHON="python3"; fi
 if ! "$PYTHON" -c "import graphify" 2>/dev/null; then
     if command -v uv >/dev/null 2>&1; then
-        uv tool install --upgrade git+https://github.com/KRNichols/graphify.git@cursor/dreamliner-codex-rebrand-5833 -q 2>&1 | tail -3 \
-          || uv tool install --upgrade dreamliner -q 2>&1 | tail -3
+        uv tool install --upgrade git+https://github.com/KRNichols/graphify.git@cursor/dreamliner-codex-rebrand-5833 -q 2>&1 | tail -3
         _UV_PY=$(uv tool run --from dreamliner python -c "import sys; print(sys.executable)" 2>/dev/null)
         if [ -z "$_UV_PY" ]; then
             _UV_PY=$(uv tool run --from git+https://github.com/KRNichols/graphify.git@cursor/dreamliner-codex-rebrand-5833 python -c "import sys; print(sys.executable)" 2>/dev/null)
         fi
         if [ -n "$_UV_PY" ]; then PYTHON="$_UV_PY"; fi
     else
-        "$PYTHON" -m pip install -e . -q 2>/dev/null \
-          || "$PYTHON" -m pip install dreamliner -q 2>/dev/null \
-          || "$PYTHON" -m pip install dreamliner -q --break-system-packages 2>&1 | tail -3
+        "$PYTHON" -m pip install -e . -q 2>/dev/null
     fi
 fi
 if ! "$PYTHON" -c "import graphify" 2>/dev/null; then
