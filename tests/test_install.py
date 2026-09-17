@@ -9,7 +9,7 @@ import pytest
 PLATFORMS = {
     "claude": (".claude/skills/graphify/SKILL.md",),
     "codebuddy": (".codebuddy/skills/graphify/SKILL.md",),
-    "codex": (".codex/skills/graphify/SKILL.md",),
+    "codex": (".codex/skills/dreamliner/SKILL.md",),
     "opencode": (".config/opencode/skills/graphify/SKILL.md",),
     "kilo": (
         ".config/kilo/skills/graphify/SKILL.md",
@@ -206,7 +206,7 @@ def test_install_codebuddy(tmp_path):
 
 def test_install_codex(tmp_path):
     _install(tmp_path, "codex")
-    assert (tmp_path / ".codex" / "skills" / "graphify" / "SKILL.md").exists()
+    assert (tmp_path / ".codex" / "skills" / "dreamliner" / "SKILL.md").exists()
 
 
 def test_install_opencode(tmp_path):
@@ -252,10 +252,10 @@ def test_install_project_codex_writes_skill_and_agents(tmp_path, monkeypatch):
     monkeypatch.setattr(sys, "argv", ["graphify", "install", "--project", "--platform", "codex"])
     with patch("graphify.__main__.Path.home", return_value=home):
         main()
-    assert (project / ".codex" / "skills" / "graphify" / "SKILL.md").exists()
+    assert (project / ".codex" / "skills" / "dreamliner" / "SKILL.md").exists()
     assert (project / "AGENTS.md").exists()
     assert (project / ".codex" / "hooks.json").exists()
-    assert not (home / ".codex" / "skills" / "graphify" / "SKILL.md").exists()
+    assert not (home / ".codex" / "skills" / "dreamliner" / "SKILL.md").exists()
 
 
 def test_claude_subcommand_project_install_and_uninstall_are_project_scoped(tmp_path, monkeypatch):
@@ -296,7 +296,7 @@ def test_codex_subcommand_project_install_and_uninstall_are_project_scoped(tmp_p
     with patch("graphify.__main__.Path.home", return_value=home):
         monkeypatch.setattr(sys, "argv", ["graphify", "codex", "install", "--project"])
         main()
-        assert (project / ".codex" / "skills" / "graphify" / "SKILL.md").exists()
+        assert (project / ".codex" / "skills" / "dreamliner" / "SKILL.md").exists()
         assert (project / "AGENTS.md").exists()
         assert (project / ".codex" / "hooks.json").exists()
         assert user_skill.exists()
@@ -305,7 +305,7 @@ def test_codex_subcommand_project_install_and_uninstall_are_project_scoped(tmp_p
         main()
 
     assert user_skill.exists()
-    assert not (project / ".codex" / "skills" / "graphify" / "SKILL.md").exists()
+    assert not (project / ".codex" / "skills" / "dreamliner" / "SKILL.md").exists()
     assert not (project / "AGENTS.md").exists()
     hooks_path = project / ".codex" / "hooks.json"
     assert hooks_path.exists()
@@ -386,17 +386,17 @@ def test_codex_skill_uses_graphify_with_existing_graph():
     import graphify
     skill = (Path(graphify.__file__).parent / "skill-codex.md").read_text()
     assert "Fast path — existing graph" in skill
-    assert "skip Steps 1–5 entirely and jump straight to `## For /graphify query`" in skill
-    assert "graphify query" in skill
-    assert "graphify explain" in skill
-    assert "graphify path" in skill
+    assert "skip Steps 1–5 entirely and jump straight to `## For $dreamliner query`" in skill
+    assert "graphify query" in skill or "dreamliner query" in skill
+    assert "graphify explain" in skill or "$dreamliner explain" in skill
+    assert "graphify path" in skill or "$dreamliner path" in skill
 
 
 def test_codex_agents_install_mentions_dirty_graph_output(tmp_path):
     _agents_install(tmp_path, "codex")
     content = (tmp_path / "AGENTS.md").read_text()
     assert "Dirty graphify-out/ files are expected" in content
-    assert "not a reason to skip graphify" in content
+    assert "not a reason to skip Dreamliner" in content
 
 
 def test_opencode_skill_contains_mention():
@@ -610,6 +610,7 @@ def test_uninstall_project_removes_project_skill_only(tmp_path, monkeypatch):
         monkeypatch.setattr(sys, "argv", ["graphify", "uninstall", "--project", "--platform", "codex"])
         main()
     assert user_skill.exists()
+    assert not (project / ".codex" / "skills" / "dreamliner" / "SKILL.md").exists()
     assert not (project / ".codex" / "skills" / "graphify" / "SKILL.md").exists()
     assert not (project / "AGENTS.md").exists()
 
@@ -743,7 +744,7 @@ def test_agents_install_idempotent(tmp_path):
     _agents_install(tmp_path, "codex")
     _agents_install(tmp_path, "codex")
     content = (tmp_path / "AGENTS.md").read_text()
-    assert content.count("## graphify") == 1
+    assert content.count("## Dreamliner") == 1
 
 
 def test_agents_install_appends_to_existing(tmp_path):
@@ -753,7 +754,7 @@ def test_agents_install_appends_to_existing(tmp_path):
     _agents_install(tmp_path, "codex")
     content = agents_md.read_text()
     assert "Do not break things." in content
-    assert "## graphify" in content
+    assert "## Dreamliner" in content
 
 
 def test_agents_uninstall_removes_section(tmp_path):
@@ -773,6 +774,7 @@ def test_agents_uninstall_preserves_other_content(tmp_path):
     assert agents_md.exists()
     content = agents_md.read_text()
     assert "Do not break things." in content
+    assert "## Dreamliner" not in content
     assert "## graphify" not in content
 
 
@@ -818,14 +820,15 @@ def test_agents_uninstall_preserves_user_h3_graphify_heading(tmp_path):
         "My own notes on how I use graphify. Keep this.\n\n"
         "## Other\n\nUnrelated content.\n"
     )
-    _agents_install(tmp_path, "codex")  # appends a genuine `## graphify` H2 section
-    assert "## graphify" in agents_md.read_text()
+    _agents_install(tmp_path, "codex")  # appends a genuine `## Dreamliner` H2 section
+    assert "## Dreamliner" in agents_md.read_text()
 
     _agents_uninstall(tmp_path)
     content = agents_md.read_text()
     assert "### graphify" in content, "user's H3 heading was deleted (#2062)"
     assert "My own notes on how I use graphify. Keep this." in content
     assert "## Other" in content and "Unrelated content." in content
+    assert not any(l.strip() == "## Dreamliner" for l in content.splitlines())
     assert not any(l.strip() == "## graphify" for l in content.splitlines())
 
 
@@ -1008,7 +1011,7 @@ def test_kilo_agents_install_idempotent(tmp_path):
     content = (tmp_path / "AGENTS.md").read_text()
     config = _json.loads((tmp_path / ".kilo" / "kilo.json").read_text())
     plugin_uri = (tmp_path / ".kilo" / "plugins" / "graphify.js").resolve().as_uri()
-    assert content.count("## graphify") == 1
+    assert content.count("## Dreamliner") == 1
     assert config["plugin"].count(plugin_uri) == 1
 
 

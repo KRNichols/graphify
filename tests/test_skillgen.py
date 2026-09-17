@@ -136,7 +136,12 @@ def test_extraction_states_no_api_key_required_for_every_host():
               if "### Step 3 - Extract entities and relationships" in a.content]
     assert bodies, "no rendered skill body contains the Step 3 extraction section"
     for a in bodies:
-        assert "graphify needs no API key" in a.content, a.path
+        no_key = (
+            "Dreamliner needs no API key"
+            if a.path.endswith("skill-codex.md")
+            else "graphify needs no API key"
+        )
+        assert no_key in a.content, a.path
         assert "Never ask the user for one, and never block on one." in a.content, a.path
         # the no-key fallback must not be framed *only* around subagent dispatch
         assert "cannot dispatch subagents" in a.content, a.path
@@ -145,7 +150,7 @@ def test_extraction_states_no_api_key_required_for_every_host():
         # tip — they are the model themselves — so the check only applies if present)
         tip = "Tip: set `GEMINI_API_KEY`"
         if tip in a.content:
-            assert a.content.index("graphify needs no API key") < a.content.index(tip), \
+            assert a.content.index(no_key) < a.content.index(tip), \
                 f"{a.path}: no-key clarity is not hoisted above the GEMINI tip"
 
 
@@ -732,8 +737,8 @@ def test_always_on_roundtrip_is_byte_faithful():
     contracts silently change.
     """
     # The guard passes with zero problems: every always-on block reproduces its
-    # frozen baseline, with the agents-md block allowed exactly the #1530
-    # sanctioned substitution recorded in gen.ALWAYS_ON_SANCTIONED_EDITS.
+    # frozen baseline after the sanctioned edits in gen.ALWAYS_ON_SANCTIONED_EDITS
+    # (#1530 host-generic invoke, then the Dreamliner product rename).
     problems = gen.always_on_roundtrip()
     assert problems == []
 
@@ -746,21 +751,22 @@ def test_always_on_roundtrip_is_byte_faithful():
         "When the user types `/graphify`, invoke the `skill` tool with "
         '`skill: "graphify"` before doing anything else.'
     )
-    new_instruction = (
+    edits = gen.ALWAYS_ON_SANCTIONED_EDITS["_AGENTS_MD_SECTION"]
+    assert edits[0] == (
+        old_instruction,
         "When the user types `/graphify`, use the installed graphify skill or instructions "
-        "before doing anything else."
+        "before doing anything else.",
     )
-    # The sanctioned-edit registry holds exactly this single old->new substitution.
-    assert gen.ALWAYS_ON_SANCTIONED_EDITS["_AGENTS_MD_SECTION"] == (
-        (old_instruction, new_instruction),
-    )
+    assert any(old == "## graphify\n" and new == "## Dreamliner\n" for old, new in edits)
     baseline_agents = gen._always_on_constants(gen.ALWAYS_ON_BASELINE_REF)["_AGENTS_MD_SECTION"]
-    # The ONLY divergence from the frozen baseline is the sanctioned sentence —
-    # any other byte drift would have surfaced as a problem above.
-    assert old_instruction in baseline_agents
-    assert baseline_agents.replace(old_instruction, new_instruction) == rendered_agents
+    expected = baseline_agents
+    for old, new in edits:
+        expected = expected.replace(old, new)
+    assert expected == rendered_agents
     assert "`skill` tool" not in rendered_agents
     assert 'skill: "graphify"' not in rendered_agents
+    assert "## Dreamliner" in rendered_agents
+    assert "$dreamliner" in rendered_agents
 
 
 def test_extracted_constants_equal_the_packaged_always_on_files():
@@ -890,8 +896,8 @@ def test_audit_allowlist_documents_only_consolidations():
     for hs in gen._CONSOLIDATION_ALLOWLIST.values():
         all_allowlisted |= set(hs)
     assert "## For native AGENTS.md integration (Trae)" not in all_allowlisted
-    # Only the two minimal-body hosts carry per-host consolidations.
-    assert set(gen._CONSOLIDATION_ALLOWLIST) == {"kilo", "vscode"}
+    # kilo/vscode: lean-core heading consolidations. Codex: Dreamliner invoke rename.
+    assert set(gen._CONSOLIDATION_ALLOWLIST) == {"kilo", "vscode", "codex"}
 
 
 # --- the trae / trae-cn native AGENTS.md integration fix -----------------------

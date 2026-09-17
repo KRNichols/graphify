@@ -270,6 +270,25 @@ def _remove_skill_file(platform_name: str, *, project: bool = False, project_dir
         skill_dst.unlink()
         print(f"  skill removed    ->  {skill_dst}")
         removed = True
+    if platform_name == "codex":
+        # Pre-Dreamliner installs lived at .codex/skills/graphify/; drop that
+        # folder so a stale $graphify skill does not linger next to $dreamliner.
+        legacy = skill_dst.parent.parent / "graphify" / "SKILL.md"
+        if legacy != skill_dst and legacy.exists():
+            legacy.unlink()
+            print(f"  skill removed    ->  {legacy}")
+            removed = True
+            legacy_stamp = legacy.parent / ".graphify_version"
+            if legacy_stamp.exists():
+                legacy_stamp.unlink()
+            legacy_refs = legacy.parent / "references"
+            if legacy_refs.exists():
+                shutil.rmtree(legacy_refs)
+            for d in (legacy.parent,):
+                try:
+                    d.rmdir()
+                except OSError:
+                    pass
     version_file = skill_dst.parent / ".graphify_version"
     if version_file.exists():
         version_file.unlink()
@@ -402,7 +421,7 @@ _PLATFORM_CONFIG: dict[str, dict] = {
     },
     "codex": {
         "skill_file": "skill-codex.md",
-        "skill_dst": Path(".codex") / "skills" / "graphify" / "SKILL.md",
+        "skill_dst": Path(".codex") / "skills" / "dreamliner" / "SKILL.md",
         "claude_md": False,
         "skill_refs": "codex",
     },
@@ -731,20 +750,25 @@ def install(platform: str = "claude", *, project: bool = False, project_dir: Pat
     print()
     print("Done. Open your AI coding assistant and type:")
     print()
-    print("  /graphify .")
+    if platform == "codex":
+        print("  $dreamliner .")
+    else:
+        print("  /graphify .")
     print()
     print("Prefer a hosted version? Early access to the graphify platform is")
     print("open free before the public v1 launch: https://app.graphify.com")
     print()
 def _print_install_usage() -> None:
     platforms = ", ".join([*_PLATFORM_CONFIG, "gemini", "cursor"])
+    print("Dreamliner (CLI alias: graphify)")
     print("Usage: graphify install [--project] [--strict] [--platform P|P]")
     print(f"Platforms: {platforms}")
     print("  --strict  block the first raw file read per session until one "
           "`graphify query` runs (Claude Code project hook only; needs --project)")
 _CLAUDE_MD_MARKER = "## graphify"
 _CODEBUDDY_MD_MARKER = "## graphify"
-_AGENTS_MD_MARKER = "## graphify"
+_AGENTS_MD_MARKER = "## Dreamliner"
+_AGENTS_MD_LEGACY_MARKER = "## graphify"
 _GEMINI_MD_MARKER = "## graphify"
 def _gemini_hook(project: bool = False) -> dict:
     """Gemini CLI BeforeTool hook, resolved to a shell-agnostic `graphify` call.
@@ -1547,15 +1571,45 @@ def _uninstall_codex_hook(project_dir: Path) -> None:
     existing["hooks"]["PreToolUse"] = filtered
     hooks_path.write_text(json.dumps(existing, indent=2), encoding="utf-8")
     print(f"  .codex/hooks.json  ->  PreToolUse hook removed")
+def _agents_md_replace_marker(content: str) -> str:
+    """Pick the AGENTS.md heading to replace: Dreamliner, else legacy graphify."""
+    headings = {line.strip() for line in content.splitlines()}
+    if _AGENTS_MD_MARKER in headings:
+        return _AGENTS_MD_MARKER
+    if _AGENTS_MD_LEGACY_MARKER in headings:
+        return _AGENTS_MD_LEGACY_MARKER
+    return _AGENTS_MD_MARKER
+
+
+def _strip_agents_md_sections(content: str) -> str | None:
+    """Remove Dreamliner and leftover legacy ``## graphify`` AGENTS.md sections."""
+    cleaned = content
+    removed = False
+    for marker in (_AGENTS_MD_MARKER, _AGENTS_MD_LEGACY_MARKER):
+        nxt = _remove_marker_section(cleaned, marker)
+        if nxt is not None:
+            cleaned = nxt
+            removed = True
+    return cleaned if removed else None
+
+
 def _agents_install(project_dir: Path, platform: str, project: bool = False) -> None:
-    """Write the graphify section to the local AGENTS.md for always-on platforms."""
+    """Write the Dreamliner section to the local AGENTS.md for always-on platforms."""
     target = (project_dir or Path(".")) / "AGENTS.md"
 
     if target.exists():
         content = target.read_text(encoding="utf-8")
+        marker = _agents_md_replace_marker(content)
         new_content = _replace_or_append_section(
-            content, _AGENTS_MD_MARKER, _always_on("agents-md")
+            content, marker, _always_on("agents-md")
         )
+        # After replacing the Dreamliner heading, drop a leftover pre-brand
+        # ``## graphify`` H2 if one is still sitting elsewhere in the file.
+        # Never strip the section we just wrote.
+        if marker != _AGENTS_MD_LEGACY_MARKER:
+            stripped = _remove_marker_section(new_content, _AGENTS_MD_LEGACY_MARKER)
+            if stripped is not None:
+                new_content = stripped if stripped.endswith("\n") else stripped + "\n"
     else:
         new_content = _always_on("agents-md")
 
@@ -1725,7 +1779,7 @@ def _agents_uninstall(project_dir: Path, platform: str = "") -> None:
         return
 
     content = target.read_text(encoding="utf-8")
-    cleaned = _remove_marker_section(content, _AGENTS_MD_MARKER)
+    cleaned = _strip_agents_md_sections(content)
     if cleaned is None:
         print("graphify section not found in AGENTS.md - nothing to do")
         if platform == "opencode":

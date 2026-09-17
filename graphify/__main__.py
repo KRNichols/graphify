@@ -526,11 +526,13 @@ def _run_cli() -> None:
             _check_skill_version(skill_dst)
 
     if len(sys.argv) >= 2 and sys.argv[1] in ("-v", "--version", "version"):
-        print(f"graphify {__version__}")
+        print(f"dreamliner {__version__} (graphify-compatible)")
         return
 
     if len(sys.argv) < 2 or sys.argv[1] in ("-h", "--help", "-?"):
-        print("Usage: graphify <command>")
+        print("Dreamliner — knowledge graph CLI")
+        print("Usage: dreamliner <command>")
+        print("       graphify <command>   (compatibility alias)")
         print()
         print("Commands:")
         print("  install [--platform P]  copy skill to platform config dir (claude|windows|codebuddy|codex|opencode|aider|amp|agents|claw|droid|trae|trae-cn|gemini|cursor|antigravity|hermes|kiro|pi|devin)")
@@ -677,8 +679,8 @@ def _run_cli() -> None:
         print("  claude uninstall        remove graphify section from CLAUDE.md + PreToolUse hook")
         print("  codebuddy install       write graphify section to CODEBUDDY.md + PreToolUse hook (CodeBuddy)")
         print("  codebuddy uninstall     remove graphify section from CODEBUDDY.md + PreToolUse hook")
-        print("  codex install           write graphify section to AGENTS.md (Codex)")
-        print("  codex uninstall         remove graphify section from AGENTS.md")
+        print("  codex install           write Dreamliner section to AGENTS.md (Codex)")
+        print("  codex uninstall         remove Dreamliner section from AGENTS.md")
         print(
             "  opencode install        write graphify section to AGENTS.md + tool.execute.before plugin (OpenCode)"
         )

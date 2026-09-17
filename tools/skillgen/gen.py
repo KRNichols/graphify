@@ -103,6 +103,10 @@ ALWAYS_ON_SANCTIONED_EDITS: dict[str, tuple[tuple[str, str], ...]] = {
     # #1530: install guidance must stay host-generic — do not tell agents to
     # invoke a literal `skill` tool with `skill: "graphify"`, which is
     # host-specific and not valid in every environment.
+    # Dreamliner brand: Codex/AGENTS.md invoke is `$dreamliner` / Dreamliner,
+    # not Claude's `/graphify`. CLI examples use the `dreamliner` entry point
+    # (`graphify` remains a compatibility alias). Applied after the #1530
+    # sentence so the old skill-tool wording is gone before the product rename.
     "_AGENTS_MD_SECTION": (
         (
             "When the user types `/graphify`, invoke the `skill` tool with "
@@ -110,6 +114,19 @@ ALWAYS_ON_SANCTIONED_EDITS: dict[str, tuple[tuple[str, str], ...]] = {
             "When the user types `/graphify`, use the installed graphify skill or instructions "
             "before doing anything else.",
         ),
+        ("## graphify\n", "## Dreamliner\n"),
+        (
+            "When the user types `/graphify`, use the installed graphify skill or instructions "
+            "before doing anything else.",
+            "When the user types `$dreamliner` or `Dreamliner`, use the installed Dreamliner skill or instructions "
+            "before doing anything else.",
+        ),
+        ('`graphify query "<question>"`', '`dreamliner query "<question>"`'),
+        ('`graphify path "<A>" "<B>"`', '`dreamliner path "<A>" "<B>"`'),
+        ('`graphify explain "<concept>"`', '`dreamliner explain "<concept>"`'),
+        ("not a reason to skip graphify", "not a reason to skip Dreamliner"),
+        ("Only skip graphify if", "Only skip Dreamliner if"),
+        ("`graphify update .`", "`dreamliner update .`"),
     ),
 }
 
@@ -252,6 +269,12 @@ _CONSOLIDATION_ALLOWLIST: dict[str, frozenset[str]] = {
         "### Step 4 - Build graph and cluster",
         "### Step 5 - Generate report and visualization",
         "### After completing all steps",
+    }),
+    # Codex invoke language is Dreamliner ($dreamliner), not Claude's /graphify.
+    # The same Usage / query sections remain; only the user-facing invoke changed.
+    "codex": frozenset({
+        "# /graphify",
+        "## For /graphify query",
     }),
 }
 
@@ -550,7 +573,34 @@ def _render_core(platform: Platform) -> str:
         raise ValueError(f"unfilled core slots for '{platform.key}': {leftover}")
     if platform.shell == "powershell":
         body = _core_to_powershell(body)
+    if platform.key == "codex":
+        body = _apply_codex_brand(body)
     return _normalise(body)
+
+
+def _apply_codex_brand(body: str) -> str:
+    """Rewrite Claude-style /graphify invoke language for Codex (Dreamliner).
+
+    Codex invokes skills as ``$name``. The product name is Dreamliner, so the
+    user-facing skill is ``$dreamliner``, not Claude's ``/graphify``. Python
+    imports (``import graphify``), output paths (``graphify-out/``), sidecar
+    files (``.graphify_*``), and the PyPI package (``graphifyy``) stay put —
+    those are the library contract, not the invoke brand.
+    """
+    body = body.replace("# /graphify\n", "# Dreamliner\n")
+    body = body.replace("/graphify", "$dreamliner")
+    body = body.replace("## What graphify is for", "## What Dreamliner is for")
+    body = body.replace(
+        "Drop any folder of code, docs, papers, images, or video into graphify",
+        "Drop any folder of code, docs, papers, images, or video into Dreamliner",
+    )
+    body = body.replace("**graphify needs no API key", "**Dreamliner needs no API key")
+    body = body.replace("If graphify saved you time", "If Dreamliner saved you time")
+    body = body.replace(
+        "wire graphify into a project's CLAUDE.md",
+        "wire Dreamliner into a project's AGENTS.md",
+    )
+    return body
 
 
 def _render_agents_md_hooks(platform: Platform) -> str:
