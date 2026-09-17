@@ -1,4 +1,4 @@
-# graphify reference: query, path, explain
+# Dreamliner reference: query, path, explain
 
 Load this when the user asks a question against an existing graph, or runs `$dreamliner path` or `$dreamliner explain`. The core's query stub points here for the full traversal flow. These flows use the `dreamliner query` CLI when it is available and fall back to an inline NetworkX traversal otherwise.
 

@@ -120,7 +120,11 @@ def test_install_settings_json_idempotent(tmp_path):
     settings_path = tmp_path / ".claude" / "settings.json"
     settings = json.loads(settings_path.read_text())
     hooks = settings.get("hooks", {}).get("PreToolUse", [])
-    bash_hooks = [h for h in hooks if h.get("matcher") == "Bash|Grep" and "graphify" in str(h)]
+    bash_hooks = [
+        h
+        for h in hooks
+        if h.get("matcher") == "Bash|Grep" and ("graphify" in str(h) or "dreamliner" in str(h))
+    ]
     assert len(bash_hooks) == 1
 
 

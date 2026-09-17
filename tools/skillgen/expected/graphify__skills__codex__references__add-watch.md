@@ -1,4 +1,4 @@
-# graphify reference: add a URL and watch a folder
+# Dreamliner reference: add a URL and watch a folder
 
 Load this when the user ran `$dreamliner add <url>` or passed `--watch`. Neither is part of the default build.
 

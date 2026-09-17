@@ -143,6 +143,10 @@ _HEADING_ALIASES: dict[str, str] = {
     "## For /graphify add": "## For $dreamliner add and --watch",
     "## For /graphify add and --watch": "## For $dreamliner add and --watch",
     "### Step 1 - Ensure graphify is installed": "### Step 1 - Ensure Dreamliner is installed",
+    "## For the commit hook and native CLAUDE.md integration":
+        "## For the commit hook and native AGENTS.md integration",
+    "## For native CLAUDE.md integration":
+        "## For native AGENTS.md integration (Codex / Dreamliner)",
 }
 
 # The full six-value file_type enum (Decision A). Every rendered platform — split
@@ -221,6 +225,18 @@ _AGENTS_MD_HOOKS: dict[str, dict[str, str]] = {
         "install_block": "graphify agents install",
         "uninstall_block": "graphify agents uninstall  # remove the section",
         "pretooluse_note": "",
+    },
+    "codex": {
+        "heading_suffix": " (Codex / Dreamliner)",
+        "host_display": "Codex",
+        "install_block": "dreamliner install",
+        "uninstall_block": "dreamliner uninstall  # remove the section",
+        "pretooluse_note": (
+            "\n> **Note:** The Codex PreToolUse hook is an intentional no-op. "
+            "Codex Desktop rejects `hookSpecificOutput.additionalContext` on "
+            "PreToolUse (it breaks Bash). Always-on guidance is AGENTS.md. "
+            "After code changes, run `$dreamliner update .`.\n"
+        ),
     },
 }
 # The prose file name the lean-core hooks pointer names, per hooks variant.
@@ -674,6 +690,7 @@ def _dreamliner_rebrand_codex(text: str) -> str:
     out = text.replace(gemini_tip, dreamliner_tip)
     # Headings and invoke tokens first (longest / most specific).
     replacements = (
+        ("# graphify reference:", "# Dreamliner reference:"),
         ("# /graphify", "# $dreamliner"),
         ("## For /graphify ", "## For $dreamliner "),
         ("## What graphify is for", "## What Dreamliner is for"),
@@ -694,10 +711,16 @@ def _dreamliner_rebrand_codex(text: str) -> str:
         ("`graphify hook", "`dreamliner hook"),
         ("`graphify cluster-only", "`dreamliner cluster-only"),
         ("`graphify add", "`dreamliner add"),
-        ("graphify install", "dreamliner install"),
-        ("graphify uninstall", "dreamliner uninstall"),
         ("graphify claude install", "dreamliner install"),
         ("graphify codex install", "dreamliner install"),
+        ("graphify install", "dreamliner install"),
+        ("graphify uninstall", "dreamliner uninstall"),
+        ("graphify hook ", "dreamliner hook "),
+        ("## graphify` section", "## Dreamliner` section"),
+        ("make graphify always-on", "make Dreamliner always-on"),
+        ("wire graphify into", "wire Dreamliner into"),
+        ("If a post-commit hook already exists, graphify appends",
+         "If a post-commit hook already exists, Dreamliner appends"),
         ("Drop any folder of code, docs, papers, images, or video into graphify",
          "Drop any folder of code, docs, papers, images, or video into Dreamliner"),
         ("What graphify is for", "What Dreamliner is for"),

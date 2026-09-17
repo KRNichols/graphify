@@ -56,6 +56,19 @@ def test_cli_gates_legacy_hosts(tmp_path, monkeypatch, argv):
     assert not (tmp_path / ".gemini").exists()
 
 
+def test_user_install_writes_skill_agents_and_hook(tmp_path, monkeypatch):
+    from graphify.__main__ import install
+
+    monkeypatch.chdir(tmp_path)
+    with patch("graphify.__main__.Path.home", return_value=tmp_path):
+        install()
+    assert (tmp_path / ".codex" / "skills" / "dreamliner" / "SKILL.md").exists()
+    assert "## Dreamliner" in (tmp_path / "AGENTS.md").read_text()
+    hooks = (tmp_path / ".codex" / "hooks.json").read_text()
+    assert "hook-check" in hooks
+    assert "dreamliner" in hooks or "graphify" in hooks
+
+
 def test_cli_install_help_is_codex_only(tmp_path, monkeypatch, capsys):
     from graphify.__main__ import main
 

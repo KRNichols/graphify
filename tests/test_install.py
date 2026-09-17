@@ -1396,10 +1396,15 @@ def test_user_profile_install_still_resolves_absolute_path(tmp_path, monkeypatch
     monkeypatch.chdir(project)
     monkeypatch.setattr("shutil.which", lambda _name: r"C:\Users\installer\graphify.EXE")
 
-    from graphify.__main__ import install
+    from graphify.__main__ import claude_install, gemini_install, install
 
     with patch("graphify.__main__.Path.home", return_value=home):
-        install(platform=platform)
+        if platform == "claude":
+            claude_install()
+        elif platform == "gemini":
+            gemini_install()
+        else:
+            install(platform=platform)
 
     commands = _hook_commands((project / _PROJECT_HOOK_FILES[platform]).read_text(encoding="utf-8"))
     assert commands, f"{platform} install registered no hook command"

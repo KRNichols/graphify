@@ -768,6 +768,10 @@ def install(platform: str = "codex", *, project: bool = False, project_dir: Path
     if platform == "opencode":
         _install_opencode_plugin(project_dir if project else Path("."))
 
+    if platform == "codex":
+        # Happy path: skill in ~/.codex/skills/dreamliner plus AGENTS.md + hook.
+        _agents_install(project_dir, "codex", project=project)
+
     if project:
         _print_project_git_add_hint([_project_scope_root(skill_dst, project_dir)])
 
@@ -2435,6 +2439,8 @@ def dispatch_install_cli(cmd: str) -> bool:
         if subcmd == "install":
             if "--project" in sys.argv[3:]:
                 _project_install(cmd, Path("."))
+            elif cmd == "codex":
+                install(platform="codex")
             else:
                 _agents_install(Path("."), cmd)
         elif subcmd == "uninstall":

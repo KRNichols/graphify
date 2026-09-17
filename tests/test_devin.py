@@ -263,26 +263,15 @@ def test_devin_platform_skill_destination_user_scope(tmp_path):
     assert dst == tmp_path / ".config" / "devin" / "skills" / "graphify" / "SKILL.md"
 
 
-def test_devin_in_main_help_text(capsys, monkeypatch):
-    """`graphify --help` must list devin in the platform list and in the per-platform section."""
+def test_devin_not_first_class_in_dreamliner_help(capsys, monkeypatch):
+    """Dreamliner help is Codex-only; leftover hosts are not advertised."""
     from graphify.__main__ import main
-    monkeypatch.setattr(sys, "argv", ["graphify", "--help"])
+    monkeypatch.setattr(sys, "argv", ["dreamliner", "--help"])
     main()
     captured = capsys.readouterr().out
-    # devin should appear in the top-level platform list
-    assert "|devin)" in captured or "|devin |" in captured or "|devin" in captured, (
-        "devin missing from `graphify --help` platform list"
-    )
-    # devin install / uninstall should appear in the per-platform section
-    assert "devin install" in captured, "`devin install` line missing from help text"
-    assert "devin uninstall" in captured, "`devin uninstall` line missing from help text"
-    assert "~/.config/devin" in captured, "devin user-scope path missing from help text"
-    # Convention: `--project` is supported by all platforms but documented by none.
-    # devin should not be the lone outlier that documents it.
-    devin_section = captured.split("devin install", 1)[1].split("\n\n", 1)[0]
-    assert "--project" not in devin_section, (
-        "devin help should NOT document --project — no other platform does"
-    )
+    assert "codex install" in captured
+    assert "devin install" not in captured
+    assert "Dreamliner" in captured
 
 
 def test_devin_platform_skill_destination_project_scope(tmp_path):

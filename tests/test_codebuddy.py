@@ -89,7 +89,7 @@ def test_codebuddy_install_project_writes_hook(tmp_path):
     assert settings_path.exists()
     settings = json.loads(settings_path.read_text())
     hooks = settings["hooks"]["PreToolUse"]
-    assert any("graphify" in str(h) for h in hooks)
+    assert any("graphify" in str(h) or "dreamliner" in str(h) for h in hooks)
 
 
 def test_codebuddy_install_hook_has_bash_matcher(tmp_path):
@@ -99,7 +99,7 @@ def test_codebuddy_install_hook_has_bash_matcher(tmp_path):
     settings = json.loads(_settings_path(tmp_path).read_text())
     hooks = settings["hooks"]["PreToolUse"]
     bash_hooks = [h for h in hooks if h.get("matcher") == "Bash|Grep"]
-    assert any("graphify" in str(h) for h in bash_hooks)
+    assert any("graphify" in str(h) or "dreamliner" in str(h) for h in bash_hooks)
 
 
 def test_codebuddy_install_hook_has_read_glob_matcher(tmp_path):
@@ -109,7 +109,7 @@ def test_codebuddy_install_hook_has_read_glob_matcher(tmp_path):
     settings = json.loads(_settings_path(tmp_path).read_text())
     hooks = settings["hooks"]["PreToolUse"]
     read_hooks = [h for h in hooks if h.get("matcher") == "Read|Glob"]
-    assert any("graphify" in str(h) for h in read_hooks)
+    assert any("graphify" in str(h) or "dreamliner" in str(h) for h in read_hooks)
 
 
 def test_codebuddy_install_idempotent(tmp_path):

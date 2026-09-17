@@ -1,4 +1,4 @@
-# graphify reference: extra exports and benchmark
+# Dreamliner reference: extra exports and benchmark
 
 Load this when the user passed one of the export flags (`--wiki`, `--neo4j`, `--neo4j-push`, `--falkordb`, `--falkordb-push`, `--svg`, `--graphml`, `--mcp`), or when the corpus is large enough for the token-reduction benchmark. Each step runs only for its own flag.
 
