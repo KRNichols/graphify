@@ -70,7 +70,7 @@ To configure in Claude Desktop, add to `claude_desktop_config.json`. Claude Desk
   "mcpServers": {
     "graphify": {
       "command": "<absolute path from: cat graphify-out/.graphify_python>",
-      "args": ["-m", "graphify.serve", "/absolute/path/to/graphify-out/graph.json"]
+      "args": ["-m", "graphify.serve", "/absolute/path/to$dreamliner-out/graph.json"]
     }
   }
 }

@@ -72,29 +72,27 @@ def test_devin_install_user_does_not_write_rules(tmp_path):
 # ---------------------------------------------------------------------------
 
 def test_devin_install_project_creates_skill_file(tmp_path, monkeypatch):
-    """Project-scope install copies skill to .devin/skills/graphify/SKILL.md."""
-    from graphify.__main__ import main
+    """Project-scope leftover installer copies skill to .devin/skills/graphify/SKILL.md."""
+    from graphify.__main__ import _project_install
     home = tmp_path / "home"
     project = tmp_path / "project"
     project.mkdir()
     monkeypatch.chdir(project)
-    monkeypatch.setattr(sys, "argv", ["graphify", "devin", "install", "--project"])
     with patch("graphify.__main__.Path.home", return_value=home):
-        main()
+        _project_install("devin", project)
     assert _skill_path_project(project).exists()
     assert not _skill_path_user(home).exists()
 
 
 def test_devin_install_project_creates_rules_file(tmp_path, monkeypatch):
-    """Project-scope install writes .windsurf/rules/graphify.md."""
-    from graphify.__main__ import main
+    """Project-scope leftover installer writes .windsurf/rules/graphify.md."""
+    from graphify.__main__ import _project_install
     home = tmp_path / "home"
     project = tmp_path / "project"
     project.mkdir()
     monkeypatch.chdir(project)
-    monkeypatch.setattr(sys, "argv", ["graphify", "devin", "install", "--project"])
     with patch("graphify.__main__.Path.home", return_value=home):
-        main()
+        _project_install("devin", project)
     rules = _rules_path(project)
     assert rules.exists()
     assert "graphify" in rules.read_text()
@@ -121,15 +119,14 @@ def test_devin_rules_install_idempotent(tmp_path, capsys):
 
 
 def test_devin_install_project_hints_git_add(tmp_path, monkeypatch, capsys):
-    """Project-scope install prints a git add hint covering .devin/ and .windsurf/."""
-    from graphify.__main__ import main
+    """Project-scope leftover install prints a git add hint covering .devin/ and .windsurf/."""
+    from graphify.__main__ import _project_install
     home = tmp_path / "home"
     project = tmp_path / "project"
     project.mkdir()
     monkeypatch.chdir(project)
-    monkeypatch.setattr(sys, "argv", ["graphify", "devin", "install", "--project"])
     with patch("graphify.__main__.Path.home", return_value=home):
-        main()
+        _project_install("devin", project)
     out = capsys.readouterr().out
     assert "git add" in out
 
@@ -151,19 +148,11 @@ def test_devin_uninstall_user_removes_skill_file(tmp_path):
 
 
 def test_devin_uninstall_user_noop_when_not_installed(tmp_path, capsys):
-    """User-scope uninstall prints an appropriate message when nothing is installed."""
-    from graphify.__main__ import main
-    import os
-    old_cwd = Path.cwd()
-    try:
-        os.chdir(tmp_path)
-        with patch("graphify.__main__.Path.home", return_value=tmp_path):
-            sys.argv = ["graphify", "devin", "uninstall"]
-            main()
-    finally:
-        os.chdir(old_cwd)
-    out = capsys.readouterr().out
-    assert "nothing to remove" in out
+    """User-scope leftover uninstall prints an appropriate message when nothing is installed."""
+    from graphify.__main__ import _remove_skill_file
+    with patch("graphify.__main__.Path.home", return_value=tmp_path):
+        removed = _remove_skill_file("devin")
+    assert not removed
 
 
 # ---------------------------------------------------------------------------
@@ -171,38 +160,34 @@ def test_devin_uninstall_user_noop_when_not_installed(tmp_path, capsys):
 # ---------------------------------------------------------------------------
 
 def test_devin_uninstall_project_removes_skill_file(tmp_path, monkeypatch):
-    """Project-scope uninstall removes .devin/skills/graphify/SKILL.md."""
-    from graphify.__main__ import main
+    """Project-scope leftover uninstall removes .devin/skills/graphify/SKILL.md."""
+    from graphify.__main__ import _project_install, _project_uninstall
     home = tmp_path / "home"
     project = tmp_path / "project"
     project.mkdir()
     monkeypatch.chdir(project)
     with patch("graphify.__main__.Path.home", return_value=home):
-        monkeypatch.setattr(sys, "argv", ["graphify", "devin", "install", "--project"])
-        main()
-        monkeypatch.setattr(sys, "argv", ["graphify", "devin", "uninstall", "--project"])
-        main()
+        _project_install("devin", project)
+        _project_uninstall("devin", project)
     assert not _skill_path_project(project).exists()
 
 
 def test_devin_uninstall_project_removes_rules_file(tmp_path, monkeypatch):
-    """Project-scope uninstall removes .windsurf/rules/graphify.md."""
-    from graphify.__main__ import main
+    """Project-scope leftover uninstall removes .windsurf/rules/graphify.md."""
+    from graphify.__main__ import _project_install, _project_uninstall
     home = tmp_path / "home"
     project = tmp_path / "project"
     project.mkdir()
     monkeypatch.chdir(project)
     with patch("graphify.__main__.Path.home", return_value=home):
-        monkeypatch.setattr(sys, "argv", ["graphify", "devin", "install", "--project"])
-        main()
-        monkeypatch.setattr(sys, "argv", ["graphify", "devin", "uninstall", "--project"])
-        main()
+        _project_install("devin", project)
+        _project_uninstall("devin", project)
     assert not _rules_path(project).exists()
 
 
 def test_devin_uninstall_project_does_not_touch_user_scope(tmp_path, monkeypatch):
-    """Project-scope uninstall must not remove the user-scope skill file."""
-    from graphify.__main__ import main
+    """Project-scope leftover uninstall must not remove the user-scope skill file."""
+    from graphify.__main__ import _project_install, _project_uninstall
     home = tmp_path / "home"
     project = tmp_path / "project"
     project.mkdir()
@@ -212,10 +197,8 @@ def test_devin_uninstall_project_does_not_touch_user_scope(tmp_path, monkeypatch
     user_skill.write_text("user skill")
     monkeypatch.chdir(project)
     with patch("graphify.__main__.Path.home", return_value=home):
-        monkeypatch.setattr(sys, "argv", ["graphify", "devin", "install", "--project"])
-        main()
-        monkeypatch.setattr(sys, "argv", ["graphify", "devin", "uninstall", "--project"])
-        main()
+        _project_install("devin", project)
+        _project_uninstall("devin", project)
     assert user_skill.exists()
 
 

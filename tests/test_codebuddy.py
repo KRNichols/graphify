@@ -168,8 +168,8 @@ def test_codebuddy_install_hint_git_add(tmp_path, capsys):
         import os
         os.chdir(project)
         with patch("graphify.__main__.Path.home", return_value=home):
-            sys.argv = ["graphify", "codebuddy", "install"]
-            main()
+            from graphify.__main__ import codebuddy_install
+            codebuddy_install(project)
     finally:
         import os
         os.chdir(old_cwd)
@@ -242,11 +242,11 @@ def test_uninstall_all_removes_codebuddy_md(tmp_path, monkeypatch):
     project.mkdir()
     monkeypatch.chdir(project)
     with patch("graphify.__main__.Path.home", return_value=home):
-        monkeypatch.setattr(sys, "argv", ["graphify", "codebuddy", "install"])
-        main()
+        from graphify.__main__ import codebuddy_install
+        codebuddy_install(project)
         md = _codebuddy_md_path(project)
         assert md.exists()
-        monkeypatch.setattr(sys, "argv", ["graphify", "uninstall"])
+        monkeypatch.setattr(sys, "argv", ["dreamliner", "uninstall"])
         main()
     assert not md.exists()
 
@@ -259,9 +259,9 @@ def test_uninstall_all_removes_codebuddy_hook(tmp_path, monkeypatch):
     project.mkdir()
     monkeypatch.chdir(project)
     with patch("graphify.__main__.Path.home", return_value=home):
-        monkeypatch.setattr(sys, "argv", ["graphify", "codebuddy", "install"])
-        main()
-        monkeypatch.setattr(sys, "argv", ["graphify", "uninstall"])
+        from graphify.__main__ import codebuddy_install
+        codebuddy_install(project)
+        monkeypatch.setattr(sys, "argv", ["dreamliner", "uninstall"])
         main()
     settings_path = _settings_path(project)
     if settings_path.exists():
@@ -297,19 +297,15 @@ def test_codebuddy_platform_skill_destination_project_scope(tmp_path):
     assert dst == tmp_path / ".codebuddy" / "skills" / "graphify" / "SKILL.md"
 
 
-def test_codebuddy_in_main_help_text(capsys, monkeypatch):
-    """`graphify --help` must list codebuddy in the platform list and per-platform section."""
+def test_codebuddy_not_first_class_in_dreamliner_help(capsys, monkeypatch):
+    """Dreamliner help is Codex-only; leftover hosts are not advertised."""
     from graphify.__main__ import main
-    monkeypatch.setattr(sys, "argv", ["graphify", "--help"])
+    monkeypatch.setattr(sys, "argv", ["dreamliner", "--help"])
     main()
     captured = capsys.readouterr().out
-    # codebuddy should appear in the top-level platform list
-    assert "|codebuddy)" in captured or "codebuddy" in captured, (
-        "codebuddy missing from `graphify --help` platform list"
-    )
-    # codebuddy install / uninstall should appear in the per-platform section
-    assert "codebuddy install" in captured, "`codebuddy install` line missing from help text"
-    assert "codebuddy uninstall" in captured, "`codebuddy uninstall` line missing from help text"
+    assert "codex install" in captured
+    assert "codebuddy install" not in captured
+    assert "Dreamliner" in captured
 
 
 def test_codebuddy_skill_file_exists_in_package():

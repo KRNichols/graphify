@@ -1,4 +1,5 @@
-# validate extraction JSON against the graphify schema before graph assembly
+# Dreamliner validation: check extraction JSON against the graph schema
+# before assembly. Public API is unchanged (validate_extraction / assert_valid).
 from __future__ import annotations
 
 VALID_FILE_TYPES = {"code", "document", "paper", "image", "rationale", "concept"}

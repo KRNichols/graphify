@@ -39,3 +39,6 @@ def test_help_lists_prs_provider_and_export_formats():
     # Silent hook internals — deliberately excluded from user-facing help.
     assert "hook-check" not in out
     assert "hook-guard" not in out
+    assert "doctor" in out, "`dreamliner --help` must list doctor"
+    assert "validate" in out, "`dreamliner --help` must list validate"
+    assert "Dreamliner" in out
