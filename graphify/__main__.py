@@ -528,7 +528,7 @@ def _run_cli() -> None:
         print("Usage: graphify <command>")
         print()
         print("Commands:")
-        print("  install [--platform P]  copy the Codex skill to ~/.codex/skills (default platform: codex)")
+        print("  install [--platform codex]  copy the Codex skill to ~/.codex/skills (default platform: codex)")
         print("  uninstall               remove the Codex skill, AGENTS.md section, and leftover host files")
         print("    --purge                 also delete graphify-out/ directory")
         print("  path \"A\" \"B\"            shortest path between two nodes in graph.json")
