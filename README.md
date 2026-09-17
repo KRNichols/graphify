@@ -16,8 +16,44 @@ The Python import package remains `graphify` and graphs still write to `graphify
 
 ## Get started (Codex)
 
+### Clean machine (copy-paste)
+
+On a machine that has only Python 3.10+ and a shell:
+
 ```bash
-# from this fork
+# 1. Install OpenAI Codex and confirm the binary exists
+#    https://openai.com/codex/
+codex --version
+
+# 2. Enable parallel extraction (required for $dreamliner on docs/papers/images)
+mkdir -p ~/.codex
+cat >> ~/.codex/config.toml <<'EOF'
+[features]
+multi_agent = true
+EOF
+
+# 3. Install Dreamliner from this fork
+uv tool install git+https://github.com/KRNichols/graphify
+# or from a clone:
+#   git clone https://github.com/KRNichols/graphify && cd graphify && pip install -e .
+
+# 4. Register the Codex skill and verify the machine is ready
+dreamliner install                 # user-global: ~/.codex/skills/dreamliner/
+dreamliner doctor                  # FAIL items are actionable; fix them before using Codex
+```
+
+Restart Codex, then in a project:
+
+```
+$dreamliner .
+dreamliner query "how does this codebase fit together?"
+```
+
+`dreamliner doctor --graph` also fails if `graphify-out/graph.json` is missing, empty, or corrupt.
+
+### Install only
+
+```bash
 uv tool install git+https://github.com/KRNichols/graphify
 # or from a clone:
 pip install -e .
@@ -141,6 +177,12 @@ dreamliner query "show the auth flow"
 
 **`dreamliner: command not found`**
 The CLI is installed but not on `PATH`. After `uv tool install`, run `uv tool update-shell` and open a new terminal. `python -m graphify` also works.
+
+**`Codex CLI not found`**
+`codex` is not on `PATH`. Install [OpenAI Codex](https://openai.com/codex/), open a new terminal, then `dreamliner doctor`.
+
+**`Codex config ... is missing or does not enable multi-agent`**
+Add `multi_agent = true` under `[features]` in `~/.codex/config.toml` (or `$CODEX_HOME/config.toml`). Invalid TOML is also a hard failure.
 
 **Codex does not list `$dreamliner`**
 Run `dreamliner install`, confirm `~/.codex/skills/dreamliner/SKILL.md` (or the project path) exists, and restart Codex.

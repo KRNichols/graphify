@@ -706,6 +706,9 @@ def install(platform: str = "codex", *, project: bool = False, project_dir: Path
     print()
     print(f"{_PRODUCT} is a Codex-only fork. Restart Codex if the skill is not listed.")
     print()
+    from graphify.doctor import doctor as _doctor
+
+    _doctor(home=Path.home(), cwd=project_dir, require_graph=False, stream=sys.stdout)
 def _print_install_usage() -> None:
     print(f"Usage: {_CLI} install [--project] [--platform codex]")
     print("Platforms: codex  (this fork is Codex-only)")

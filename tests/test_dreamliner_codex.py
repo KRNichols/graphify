@@ -15,6 +15,7 @@ from graphify.brand import (
     TRIGGER,
     empty_graph_message,
     missing_binary_message,
+    missing_codex_cli_message,
     missing_graph_message,
     unsupported_host_message,
 )
@@ -183,3 +184,101 @@ def test_skill_codex_has_no_multi_host_leftovers():
     assert "Works in" not in text
     assert "ERROR: Dreamliner is not installed" in text
     assert "multi_agent = true" in text
+
+
+def test_readme_has_clean_machine_runbook():
+    readme = Path(__file__).resolve().parents[1] / "README.md"
+    text = readme.read_text(encoding="utf-8")
+    assert "# Dreamliner" in text
+    assert "Clean machine (copy-paste)" in text
+    assert "dreamliner doctor" in text
+    assert "codex --version" in text
+    assert "multi_agent = true" in text
+    assert "$dreamliner" in text
+    assert "/graphify ." not in text
+    assert "Claude Code, Cursor, Gemini CLI" in text  # named only as unsupported
+
+
+def test_doctor_fails_on_missing_codex_and_bad_config(tmp_path, capsys):
+    from graphify.doctor import doctor
+
+    (tmp_path / ".codex").mkdir()
+    (tmp_path / ".codex" / "config.toml").write_text("[[[not toml", encoding="utf-8")
+    with patch("graphify.doctor.shutil.which", return_value=None):
+        rc = doctor(home=tmp_path, cwd=tmp_path, require_graph=False)
+    assert rc == 1
+    err = capsys.readouterr().err
+    assert "Codex CLI not found" in err
+    assert "invalid" in err.lower() or "TOML" in err
+    assert "Dreamliner is not ready" in err
+
+
+def test_doctor_passes_when_codex_skill_and_config_exist(tmp_path, capsys):
+    from graphify.doctor import doctor
+
+    cfg = tmp_path / ".codex" / "config.toml"
+    cfg.parent.mkdir()
+    cfg.write_text("[features]\nmulti_agent = true\n", encoding="utf-8")
+    skill = tmp_path / ".codex" / "skills" / "dreamliner" / "SKILL.md"
+    skill.parent.mkdir(parents=True)
+    skill.write_text("---\nname: dreamliner\n---\n", encoding="utf-8")
+    fake_bin = tmp_path / "bin"
+    fake_bin.mkdir()
+    (fake_bin / "codex").write_text("", encoding="utf-8")
+    (fake_bin / "dreamliner").write_text("", encoding="utf-8")
+
+    def _which(name):
+        if name in ("codex", "dreamliner", "graphify"):
+            return str(fake_bin / name)
+        return None
+
+    with patch("graphify.doctor.shutil.which", side_effect=_which):
+        rc = doctor(home=tmp_path, cwd=tmp_path, require_graph=False)
+    assert rc == 0
+    err = capsys.readouterr().err
+    assert "Dreamliner is ready" in err
+    assert "multi_agent = true" in err
+
+
+def test_doctor_graph_flag_fails_on_empty_graph(tmp_path, capsys):
+    from graphify.doctor import doctor
+
+    cfg = tmp_path / ".codex" / "config.toml"
+    cfg.parent.mkdir()
+    cfg.write_text("[features]\nmulti_agent = true\n", encoding="utf-8")
+    skill = tmp_path / ".codex" / "skills" / "dreamliner" / "SKILL.md"
+    skill.parent.mkdir(parents=True)
+    skill.write_text("ok", encoding="utf-8")
+    gout = tmp_path / "graphify-out"
+    gout.mkdir()
+    (gout / "graph.json").write_text('{"nodes":[],"links":[]}', encoding="utf-8")
+
+    def _which(name):
+        return f"/tmp/{name}"
+
+    with patch("graphify.doctor.shutil.which", side_effect=_which):
+        rc = doctor(home=tmp_path, cwd=tmp_path, require_graph=True)
+    assert rc == 1
+    assert "empty" in capsys.readouterr().err
+
+
+def test_missing_codex_cli_message_is_actionable():
+    msg = missing_codex_cli_message()
+    assert "codex" in msg.lower()
+    assert "openai.com/codex" in msg
+
+
+def test_cli_doctor_command(monkeypatch, tmp_path, capsys):
+    import graphify.__main__ as mainmod
+
+    monkeypatch.setattr(mainmod, "_check_skill_version", lambda *a, **k: None)
+    monkeypatch.setattr(mainmod.sys, "argv", ["dreamliner", "doctor"])
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr("graphify.doctor._home", lambda: tmp_path)
+    monkeypatch.setattr("graphify.doctor.shutil.which", lambda name: None)
+    with pytest.raises(SystemExit) as exc:
+        mainmod.main()
+    assert exc.value.code == 1
+    err = capsys.readouterr().err
+    assert "Dreamliner doctor" in err
+    assert "codex-cli" in err

@@ -188,7 +188,7 @@ def _check_skill_version(skill_dst: Path, platform_names: "list[str] | None" = N
     except OSError:
         return
     if not skill_exists:
-        print("  warning: skill dir exists but SKILL.md is missing. Run 'graphify install' to repair.", file=sys.stderr)
+        print("  warning: skill dir exists but SKILL.md is missing. Run 'dreamliner install' to repair.", file=sys.stderr)
         return
     # A progressive SKILL.md links to its references/ sidecar. If the body points
     # at references/ but the dir is gone (manual delete, partial upgrade), the
@@ -198,7 +198,7 @@ def _check_skill_version(skill_dst: Path, platform_names: "list[str] | None" = N
     except OSError:
         body = ""
     if "references/" in body and not (skill_dst.parent / "references").exists():
-        print("  warning: skill references/ sidecar is missing. Run 'graphify install' to repair.", file=sys.stderr)
+        print("  warning: skill references/ sidecar is missing. Run 'dreamliner install' to repair.", file=sys.stderr)
     try:
         installed = version_file.read_text(encoding="utf-8").strip()
     except OSError:
@@ -211,21 +211,17 @@ def _check_skill_version(skill_dst: Path, platform_names: "list[str] | None" = N
             # skill. The real fix is to upgrade the package (#1568). Common for a stale
             # `uv tool` CLI, or a contributor whose dev checkout stamped a newer skill.
             print(
-                f"  warning: skill is from graphify {installed}, but the package is "
+                f"  warning: skill is from Dreamliner {installed}, but the package is "
                 f"{__version__} (older). Upgrade the package "
-                f"(e.g. 'uv tool upgrade graphifyy' or 'pip install -U graphifyy'); "
-                f"running 'graphify install' would downgrade the skill.",
+                f"(e.g. 'uv tool upgrade --from git+https://github.com/KRNichols/graphify dreamliner' "
+                f"or 'pip install -U .'); "
+                f"running 'dreamliner install' would downgrade the skill.",
                 file=sys.stderr,
             )
         else:
-            _cmd = (
-                f"graphify install --platform {platform_names[0]}"
-                if platform_names else "graphify install"
-            )
             print(
-                f"  warning: skill at {skill_dst.parent} is from graphify {installed}, "
-                f"package is {__version__}. Run '{_cmd}' to update it "
-                f"(a plain 'graphify install' refreshes only the detected platform).",
+                f"  warning: skill at {skill_dst.parent} is from Dreamliner {installed}, "
+                f"package is {__version__}. Run 'dreamliner install' to update it.",
                 file=sys.stderr,
             )
 
@@ -514,7 +510,7 @@ def _run_cli() -> None:
     # Skip during install/uninstall (hook writes trigger a fresh check anyway).
     # Skip during hook-check — it runs on every editor tool use and must be silent.
     # Deduplicate paths so platforms sharing the same install dir don't warn twice.
-    _silent_cmds = {"install", "uninstall", "hook-check", "hook-guard"}
+    _silent_cmds = {"install", "uninstall", "hook-check", "hook-guard", "doctor"}
     if not any(arg in _silent_cmds for arg in sys.argv):
         # Resolve each platform's real user-scope destination so per-platform
         # overrides (gemini, opencode, devin, antigravity, amp) check the dir
@@ -533,6 +529,8 @@ def _run_cli() -> None:
         print("  install                 install the Codex Dreamliner skill (~/.codex/skills/dreamliner/)")
         print("    --project               install into ./.codex/skills/dreamliner/ (repo-local)")
         print("  uninstall               remove the Dreamliner Codex skill")
+        print("  doctor                  check Codex CLI, config, skill, and graph (machine-ready)")
+        print("    --graph                 treat a missing/empty graph as a failure")
         print("    --purge                 also delete graphify-out/ directory")
         print("  path \"A\" \"B\"            shortest path between two nodes in graph.json")
         print("    --graph <path>          path to graph.json (default graphify-out/graph.json)")

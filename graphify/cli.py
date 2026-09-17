@@ -1081,6 +1081,11 @@ def _reenter_main() -> None:
 
 
 def dispatch_command(cmd: str) -> None:
+    if cmd == "doctor":
+        from graphify.doctor import doctor
+
+        require_graph = "--graph" in sys.argv[2:]
+        sys.exit(doctor(require_graph=require_graph))
     if cmd == "provider":
         from graphify.llm import _custom_providers_path, BACKENDS
         import json as _json
@@ -1174,7 +1179,7 @@ def dispatch_command(cmd: str) -> None:
                 "temperature": 0,
             }
             global_path.write_text(_json.dumps(existing, indent=2) + "\n", encoding="utf-8")
-            print(f"Provider '{name}' added. Use with: graphify extract . --backend {name}")
+            print(f"Provider '{name}' added. Use with: dreamliner extract . --backend {name}")
 
         elif subcmd == "remove":
             name = sys.argv[3] if len(sys.argv) > 3 else ""
@@ -2090,7 +2095,8 @@ def dispatch_command(cmd: str) -> None:
         graph_json = graph_override if graph_override is not None else watch_path / _GRAPHIFY_OUT / "graph.json"
         if not graph_json.exists():
             print(
-                f"error: no graph found at {graph_json} — run /graphify first",
+                f"error: no Dreamliner graph found at {graph_json}. "
+                "Build one first with `$dreamliner .` or `dreamliner extract .`.",
                 file=sys.stderr,
             )
             sys.exit(1)
@@ -2933,7 +2939,11 @@ def dispatch_command(cmd: str) -> None:
         report_path = report_path.expanduser()
 
         if not graph_path.exists():
-            print(f"error: graph not found: {graph_path}. Run /graphify <path> first.", file=sys.stderr)
+            print(
+                f"error: no Dreamliner graph found at {graph_path}. "
+                "Build one first with `$dreamliner .` or `dreamliner extract .`.",
+                file=sys.stderr,
+            )
             sys.exit(1)
 
         if subcmd == "callflow-html":
@@ -3188,7 +3198,7 @@ def dispatch_command(cmd: str) -> None:
         elif subcmd == "list":
             repos = _global_list()
             if not repos:
-                print("Global graph is empty. Use 'graphify global add' to add a project.")
+                print("Global graph is empty. Use 'dreamliner global add' to add a project.")
             else:
                 print(f"Global graph: {_global_path()}")
                 for tag, info in repos.items():
@@ -4476,12 +4486,16 @@ def dispatch_command(cmd: str) -> None:
             G = _build([merged], dedup=not no_dedup, dedup_llm_backend=dedup_backend, root=target)
         stages.mark("build")
         if G.number_of_nodes() == 0:
+            from graphify.brand import empty_graph_message, failed_graph_build_message
+
             print(
-                "[graphify extract] graph is empty — extraction produced no nodes. "
-                "Possible causes: all files skipped, binary-only corpus, or LLM "
-                "returned no edges.",
+                failed_graph_build_message(
+                    str(graphify_out / "graph.json"),
+                    "Extraction produced no nodes.",
+                ),
                 file=sys.stderr,
             )
+            print(empty_graph_message(str(graphify_out / "graph.json")), file=sys.stderr)
             sys.exit(1)
 
         communities = _cluster(G, resolution=cli_resolution, exclude_hubs_percentile=cli_exclude_hubs)
@@ -4816,5 +4830,5 @@ def dispatch_command(cmd: str) -> None:
         _reenter_main()
     else:
         print(f"error: unknown command '{cmd}'", file=sys.stderr)
-        print("Run 'graphify --help' for usage.", file=sys.stderr)
+        print("Run 'dreamliner --help' for usage.", file=sys.stderr)
         sys.exit(1)

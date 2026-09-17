@@ -100,11 +100,36 @@ def unsupported_host_message(platform: str) -> str:
     )
 
 
-def bad_codex_config_message() -> str:
-    """Actionable error when Codex multi-agent dispatch is unavailable."""
+def missing_codex_cli_message() -> str:
+    """Actionable error when the Codex binary is not on PATH."""
     return (
-        f"error: Codex `spawn_agent` is unavailable. {PRODUCT} parallel extraction "
-        "needs `multi_agent = true` under `[features]` in `~/.codex/config.toml`. "
-        "Add that setting, restart Codex, and retry. "
-        "A code-only corpus can continue without subagents (AST only)."
+        f"error: Codex CLI not found on PATH. {PRODUCT} is a Codex-only variant "
+        "and needs the `codex` command.\n"
+        "Install OpenAI Codex, then open a new terminal:\n"
+        "  https://openai.com/codex/\n"
+        f"Then run `{CLI} doctor` to re-check."
+    )
+
+
+def bad_codex_config_message(path: str | None = None) -> str:
+    """Actionable error when Codex multi-agent dispatch is unavailable or config is invalid."""
+    where = path or "~/.codex/config.toml"
+    return (
+        f"error: Codex config at {where} is missing or does not enable multi-agent. "
+        f"{PRODUCT} parallel extraction needs `multi_agent = true` under `[features]`.\n"
+        f"Create or edit {where}:\n"
+        "  [features]\n"
+        "  multi_agent = true\n"
+        "Restart Codex, then retry. A code-only corpus can continue without subagents (AST only)."
+    )
+
+
+def failed_graph_build_message(path: str | None = None, reason: str | None = None) -> str:
+    """Actionable error when extract/build produced no usable graph."""
+    where = f" at {path}" if path else ""
+    why = f" {reason}" if reason else ""
+    return (
+        f"error: {PRODUCT} graph build failed{where}.{why} "
+        "Check the path, ignore rules (`.gitignore` / `.graphifyignore`), and that "
+        f"the folder has supported files. Then retry `{TRIGGER} .` or `{CLI} extract . --force`."
     )
