@@ -775,9 +775,9 @@ def install(platform: str = _DEFAULT_PLATFORM, *, project: bool = False, project
         _print_project_git_add_hint([_project_scope_root(skill_dst, project_dir)])
 
     print()
-    print("Done. Open your AI coding assistant and type:")
+    print("Done. In Codex, type:")
     print()
-    print("  /graphify .")
+    print("  $graphify .")
     print()
     print("Prefer a hosted version? Early access to the graphify platform is")
     print("open free before the public v1 launch: https://app.graphify.com")
@@ -1224,7 +1224,7 @@ def _cursor_install(project_dir: Path) -> None:
     print(f"graphify rule {action} at {rule_path.resolve()}")
     print()
     print("Cursor will now always include the knowledge graph context.")
-    print("Run /graphify . first to build the graph if you haven't already.")
+    print("Run $graphify . first to build the graph if you haven't already.")
 def _cursor_uninstall(project_dir: Path) -> None:
     """Remove .cursor/rules/graphify.mdc."""
     rule_path = (project_dir or Path(".")) / _CURSOR_RULE_PATH

@@ -49,10 +49,10 @@ uv tool install graphifyy      # install the CLI (or: pipx install graphifyy)
 graphify install               # register the Codex skill (default platform: Codex)
 ```
 
-Then, in your AI assistant:
+Then, in Codex:
 
 ```
-/graphify .
+$graphify .
 ```
 
 That's it. You get **three files**:
