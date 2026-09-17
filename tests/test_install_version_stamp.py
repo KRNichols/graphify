@@ -26,26 +26,21 @@ def test_install_does_not_bump_other_platforms_stamp(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
     monkeypatch.setattr(mainmod, "_check_skill_version", lambda _: None)
 
-    with patch("graphify.__main__.Path.home", return_value=home):
-        # Simulate "codex" installed earlier at a stale version: its SKILL.md
-        # content is old, and its stamp reflects that old version.
-        codex_skill = mainmod._platform_skill_destination("codex", project=False)
-        codex_skill.parent.mkdir(parents=True, exist_ok=True)
-        codex_skill.write_text("stale skill body", encoding="utf-8")
-        codex_stamp = codex_skill.parent / ".graphify_version"
-        codex_stamp.write_text(_STALE_STAMP, encoding="utf-8")
+    with patch("pathlib.Path.home", return_value=home):
+        leftover = home / ".claude" / "skills" / "graphify"
+        leftover.mkdir(parents=True, exist_ok=True)
+        leftover_stamp = leftover / ".graphify_version"
+        leftover_stamp.write_text(_STALE_STAMP, encoding="utf-8")
+        (leftover / "SKILL.md").write_text("leftover non-Codex skill", encoding="utf-8")
 
-        # Upgrade only the claude platform.
-        mainmod.install("claude")
+        # This variant only installs Codex. A leftover host dir must keep
+        # its stale stamp so its refresh warning still fires (#2694).
+        mainmod.install("codex")
 
-        # The platform we installed is stamped at the current version...
-        claude_skill = mainmod._platform_skill_destination("claude", project=False)
-        assert (claude_skill.parent / ".graphify_version").read_text() == mainmod.__version__
-
-        # ...but the untouched codex platform keeps its stale stamp, so its
-        # refresh warning still fires.
-        assert codex_stamp.read_text() == _STALE_STAMP, (
-            "installing claude must not advance codex's version stamp (#2694)"
+        installed = mainmod._platform_skill_destination("codex", project=False)
+        assert (installed.parent / ".graphify_version").read_text() == mainmod.__version__
+        assert leftover_stamp.read_text() == _STALE_STAMP, (
+            "installing Codex must not advance a leftover host's version stamp (#2694)"
         )
 
 
@@ -58,17 +53,20 @@ def test_stale_untouched_platform_still_emits_warning(tmp_path, monkeypatch, cap
     monkeypatch.chdir(tmp_path)
     real_check = mainmod._check_skill_version  # keep the real warner for the assertion
 
-    with patch("graphify.__main__.Path.home", return_value=home):
-        codex_skill = mainmod._platform_skill_destination("codex", project=False)
-        codex_skill.parent.mkdir(parents=True, exist_ok=True)
-        codex_skill.write_text("stale skill body", encoding="utf-8")
-        (codex_skill.parent / ".graphify_version").write_text(_STALE_STAMP, encoding="utf-8")
+    with patch("pathlib.Path.home", return_value=home):
+        stale_skill = mainmod._platform_skill_destination("codex", project=False)
+        stale_skill.parent.mkdir(parents=True, exist_ok=True)
+        stale_skill.write_text("stale skill body", encoding="utf-8")
+        (stale_skill.parent / ".graphify_version").write_text(_STALE_STAMP, encoding="utf-8")
 
+        # Fresh install overwrites the skill but we re-stamp the old
+        # version to simulate an untouched leftover copy, then warn.
         with patch.object(mainmod, "_check_skill_version", lambda _: None):
-            mainmod.install("claude")  # install noise silenced
+            mainmod.install("codex")
+        (stale_skill.parent / ".graphify_version").write_text(_STALE_STAMP, encoding="utf-8")
 
         capsys.readouterr()  # drop install output
-        real_check(codex_skill)  # now run the real warner on the untouched platform
+        real_check(stale_skill)
 
     err = capsys.readouterr().err
     assert _STALE_STAMP in err and "update" in err, (

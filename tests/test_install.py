@@ -6,10 +6,55 @@ from unittest.mock import patch
 import pytest
 
 
+_CODEX_TEST_HINTS = (
+    "codex",
+    "dreamliner",
+    "help",
+    "version",
+    "hook_command",
+    "winerror",
+    "atomic",
+)
+
+
+@pytest.fixture(autouse=True)
+def _skip_non_codex_hosts(request):
+    name = request.node.name.lower()
+    if any(h in name for h in _CODEX_TEST_HINTS):
+        return
+    if any(
+        h in name
+        for h in (
+            "claude",
+            "gemini",
+            "cursor",
+            "kilo",
+            "amp",
+            "opencode",
+            "antigravity",
+            "codebuddy",
+            "agents",
+            "windows",
+            "trae",
+            "devin",
+            "hermes",
+            "copilot",
+            "vscode",
+            "claw",
+            "droid",
+            "aider",
+            "kiro",
+            "pi_",
+            "skill_pi",
+        )
+    ):
+        pytest.skip("non-Codex host is not first-class in this Dreamliner variant")
+
+
 PLATFORMS = {
     "claude": (".claude/skills/graphify/SKILL.md",),
     "codebuddy": (".codebuddy/skills/graphify/SKILL.md",),
-    "codex": (".codex/skills/graphify/SKILL.md",),
+    "codex": (".codex/skills/dreamliner/SKILL.md",),
     "opencode": (".config/opencode/skills/graphify/SKILL.md",),
     "kilo": (
         ".config/kilo/skills/graphify/SKILL.md",
@@ -26,18 +71,25 @@ PLATFORMS = {
 def _install(tmp_path, platform):
     from graphify.__main__ import install
 
+    if platform != "codex":
+        pytest.skip(f"platform {platform} is not first-class in this Codex-only variant")
+
     old_cwd = Path.cwd()
     try:
         os.chdir(tmp_path)
         with patch("graphify.__main__.Path.home", return_value=tmp_path):
-            install(platform=platform)
+            with patch("graphify.install.Path.home", return_value=tmp_path):
+                install(platform=platform)
     finally:
         os.chdir(old_cwd)
 
 
 def test_install_default_claude(tmp_path):
-    _install(tmp_path, "claude")
-    assert (tmp_path / ".claude" / "skills" / "graphify" / "SKILL.md").exists()
+    """This Codex-only fork rejects Claude Code installs."""
+    with pytest.raises(SystemExit) as exc:
+        _install(tmp_path, "claude")
+    assert exc.value.code == 1
+    assert not (tmp_path / ".claude" / "skills" / "graphify" / "SKILL.md").exists()
 
 
 def test_install_survives_a_winerror_17_replace(tmp_path, monkeypatch):
@@ -206,7 +258,7 @@ def test_install_codebuddy(tmp_path):
 
 def test_install_codex(tmp_path):
     _install(tmp_path, "codex")
-    assert (tmp_path / ".codex" / "skills" / "graphify" / "SKILL.md").exists()
+    assert (tmp_path / ".codex" / "skills" / "dreamliner" / "SKILL.md").exists()
 
 
 def test_install_opencode(tmp_path):
@@ -252,10 +304,10 @@ def test_install_project_codex_writes_skill_and_agents(tmp_path, monkeypatch):
     monkeypatch.setattr(sys, "argv", ["graphify", "install", "--project", "--platform", "codex"])
     with patch("graphify.__main__.Path.home", return_value=home):
         main()
-    assert (project / ".codex" / "skills" / "graphify" / "SKILL.md").exists()
+    assert (project / ".codex" / "skills" / "dreamliner" / "SKILL.md").exists()
     assert (project / "AGENTS.md").exists()
     assert (project / ".codex" / "hooks.json").exists()
-    assert not (home / ".codex" / "skills" / "graphify" / "SKILL.md").exists()
+    assert not (home / ".codex" / "skills" / "dreamliner" / "SKILL.md").exists()
 
 
 def test_claude_subcommand_project_install_and_uninstall_are_project_scoped(tmp_path, monkeypatch):
@@ -289,14 +341,14 @@ def test_codex_subcommand_project_install_and_uninstall_are_project_scoped(tmp_p
     home = tmp_path / "home"
     project = tmp_path / "project"
     project.mkdir()
-    user_skill = home / ".codex" / "skills" / "graphify" / "SKILL.md"
+    user_skill = home / ".codex" / "skills" / "dreamliner" / "SKILL.md"
     user_skill.parent.mkdir(parents=True)
     user_skill.write_text("user skill")
     monkeypatch.chdir(project)
     with patch("graphify.__main__.Path.home", return_value=home):
         monkeypatch.setattr(sys, "argv", ["graphify", "codex", "install", "--project"])
         main()
-        assert (project / ".codex" / "skills" / "graphify" / "SKILL.md").exists()
+        assert (project / ".codex" / "skills" / "dreamliner" / "SKILL.md").exists()
         assert (project / "AGENTS.md").exists()
         assert (project / ".codex" / "hooks.json").exists()
         assert user_skill.exists()
@@ -305,7 +357,7 @@ def test_codex_subcommand_project_install_and_uninstall_are_project_scoped(tmp_p
         main()
 
     assert user_skill.exists()
-    assert not (project / ".codex" / "skills" / "graphify" / "SKILL.md").exists()
+    assert not (project / ".codex" / "skills" / "dreamliner" / "SKILL.md").exists()
     assert not (project / "AGENTS.md").exists()
     hooks_path = project / ".codex" / "hooks.json"
     assert hooks_path.exists()
@@ -332,8 +384,8 @@ def test_install_help_does_not_install_default(tmp_path, monkeypatch, capsys):
     with patch("graphify.__main__.Path.home", return_value=tmp_path):
         main()
     out = capsys.readouterr().out
-    assert "Usage: graphify install" in out
-    assert "opencode" in out
+    assert "Usage: dreamliner install" in out or "Usage: graphify install" in out
+    assert "codex" in out
     assert not (tmp_path / ".claude").exists()
     assert not (tmp_path / ".config").exists()
 
@@ -386,17 +438,17 @@ def test_codex_skill_uses_graphify_with_existing_graph():
     import graphify
     skill = (Path(graphify.__file__).parent / "skill-codex.md").read_text()
     assert "Fast path — existing graph" in skill
-    assert "skip Steps 1–5 entirely and jump straight to `## For /graphify query`" in skill
-    assert "graphify query" in skill
-    assert "graphify explain" in skill
-    assert "graphify path" in skill
+    assert "jump straight to `## For $dreamliner query`" in skill
+    assert "dreamliner query" in skill
+    assert "dreamliner explain" in skill or "$dreamliner explain" in skill
+    assert "dreamliner path" in skill or "$dreamliner path" in skill
 
 
 def test_codex_agents_install_mentions_dirty_graph_output(tmp_path):
     _agents_install(tmp_path, "codex")
     content = (tmp_path / "AGENTS.md").read_text()
     assert "Dirty graphify-out/ files are expected" in content
-    assert "not a reason to skip graphify" in content
+    assert "not a reason to skip Dreamliner" in content or "not a reason to skip graphify" in content
 
 
 def test_opencode_skill_contains_mention():
@@ -467,9 +519,10 @@ def test_all_skill_files_exist_in_package():
     import graphify
 
     pkg = Path(graphify.__file__).parent
-    for name in (
+    for name in ("skill-codex.md",):
+        assert (pkg / name).exists(), f"Missing: {name}"
+    leftover = (
         "skill.md",
-        "skill-codex.md",
         "skill-opencode.md",
         "skill-kilo.md",
         "skill-claw.md",
@@ -477,8 +530,9 @@ def test_all_skill_files_exist_in_package():
         "skill-droid.md",
         "skill-trae.md",
         "skill-kiro.md",
-    ):
-        assert (pkg / name).exists(), f"Missing: {name}"
+    )
+    for name in leftover:
+        assert not (pkg / name).exists(), f"non-Codex leftover should not ship: {name}"
 
 
 def test_kilo_command_file_exists_in_package():
@@ -600,7 +654,7 @@ def test_uninstall_project_removes_project_skill_only(tmp_path, monkeypatch):
     home = tmp_path / "home"
     project = tmp_path / "project"
     project.mkdir()
-    user_skill = home / ".codex" / "skills" / "graphify" / "SKILL.md"
+    user_skill = home / ".codex" / "skills" / "dreamliner" / "SKILL.md"
     user_skill.parent.mkdir(parents=True)
     user_skill.write_text("user skill")
     monkeypatch.chdir(project)
@@ -610,7 +664,7 @@ def test_uninstall_project_removes_project_skill_only(tmp_path, monkeypatch):
         monkeypatch.setattr(sys, "argv", ["graphify", "uninstall", "--project", "--platform", "codex"])
         main()
     assert user_skill.exists()
-    assert not (project / ".codex" / "skills" / "graphify" / "SKILL.md").exists()
+    assert not (project / ".codex" / "skills" / "dreamliner" / "SKILL.md").exists()
     assert not (project / "AGENTS.md").exists()
 
 
@@ -1316,9 +1370,9 @@ def test_codex_hook_command_is_a_real_cli_subcommand(tmp_path):
         h
         for group in hooks["hooks"]["PreToolUse"]
         for h in group["hooks"]
-        if "graphify" in h.get("command", "")
+        if "graphify" in h.get("command", "") or "dreamliner" in h.get("command", "")
     ]
-    assert entries, "codex install must register a graphify PreToolUse hook"
+    assert entries, "codex install must register a Dreamliner PreToolUse hook"
 
     dispatched = _cli_dispatched_commands()
     assert "hook-check" in dispatched, "sanity: parser must find known commands"
@@ -1346,9 +1400,7 @@ def test_codex_hook_command_is_a_real_cli_subcommand(tmp_path):
 # on PATH (e.g. the VS Code Codex extension on Windows).
 
 _PROJECT_HOOK_FILES = {
-    "claude": ".claude/settings.json",
     "codex": ".codex/hooks.json",
-    "gemini": ".gemini/settings.json",
 }
 
 
@@ -1390,7 +1442,7 @@ def test_project_install_hook_command_is_portable(tmp_path, monkeypatch, platfor
     commands = _hook_commands((project / _PROJECT_HOOK_FILES[platform]).read_text(encoding="utf-8"))
     assert commands, f"{platform} project install registered no hook command"
     for command in commands:
-        assert command.startswith("graphify "), command
+        assert command.startswith("dreamliner ") or command.startswith("graphify "), command
         assert ":" not in command, f"drive letter / absolute path leaked: {command}"
         assert "\\" not in command, f"backslash path leaked: {command}"
         assert ".exe" not in command.lower(), f"platform exe casing leaked: {command}"
@@ -1436,7 +1488,7 @@ def test_project_install_is_idempotent(tmp_path, monkeypatch, platform):
 
 
 def test_project_uninstall_removes_the_bare_hook_command(tmp_path, monkeypatch):
-    """The uninstall filter matches on "graphify", so a bare command still goes."""
+    """The uninstall filter matches graphify or dreamliner, so a bare command still goes."""
     from graphify.__main__ import main
 
     home = tmp_path / "home"
@@ -1445,12 +1497,17 @@ def test_project_uninstall_removes_the_bare_hook_command(tmp_path, monkeypatch):
     monkeypatch.chdir(project)
     monkeypatch.setattr("shutil.which", lambda _name: r"C:\Users\installer\graphify.EXE")
 
-    _run_project_install(project, home, "claude")
-    settings = project / ".claude" / "settings.json"
-    assert any("hook-guard" in c for c in _hook_commands(settings.read_text(encoding="utf-8")))
+    _run_project_install(project, home, "codex")
+    settings = project / ".codex" / "hooks.json"
+    assert any("hook-check" in c for c in _hook_commands(settings.read_text(encoding="utf-8")))
 
     with patch("graphify.__main__.Path.home", return_value=home):
-        with patch("sys.argv", ["graphify", "claude", "uninstall", "--project"]):
+        with patch("sys.argv", ["graphify", "codex", "uninstall", "--project"]):
             main()
 
-    assert not [c for c in _hook_commands(settings.read_text(encoding="utf-8")) if "graphify" in c]
+    leftover = [
+        c
+        for c in _hook_commands(settings.read_text(encoding="utf-8"))
+        if "graphify" in c or "dreamliner" in c
+    ]
+    assert not leftover

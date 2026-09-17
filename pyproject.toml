@@ -3,13 +3,13 @@ requires = ["setuptools>=83.0.0"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "graphifyy"
-version = "0.9.63"
-description = "AI coding assistant skill (Claude Code, CodeBuddy, Codex, OpenCode, Kilo Code, Cursor, Gemini CLI, Aider, OpenClaw, Factory Droid, Trae, Hermes, Kiro, Pi, Devin CLI, Google Antigravity) - turn any folder of code, docs, papers, images, or videos into a queryable knowledge graph"
+name = "dreamliner"
+version = "0.9.64"
+description = "Dreamliner — Codex-only knowledge-graph skill. Local deterministic AST parsing into a queryable graph; every edge explained; no vector store."
 readme = "README.md"
 license = "Apache-2.0"
 license-files = ["LICENSE", "LICENSE-MIT", "NOTICE"]
-keywords = ["claude", "claude-code", "codex", "opencode", "kilo", "cursor", "gemini", "aider", "kiro", "pi", "devin", "knowledge-graph", "rag", "graphrag", "obsidian", "community-detection", "tree-sitter", "leiden", "llm"]
+keywords = ["dreamliner", "codex", "openai", "knowledge-graph", "rag", "graphrag", "obsidian", "community-detection", "tree-sitter", "leiden", "llm"]
 requires-python = ">=3.10"
 dependencies = [
     "networkx>=3.4",
@@ -45,9 +45,9 @@ dependencies = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/Graphify-Labs/graphify"
-Repository = "https://github.com/Graphify-Labs/graphify"
-Issues = "https://github.com/Graphify-Labs/graphify/issues"
+Homepage = "https://github.com/KRNichols/graphify"
+Repository = "https://github.com/KRNichols/graphify"
+Issues = "https://github.com/KRNichols/graphify/issues"
 
 [project.optional-dependencies]
 # starlette is pulled in transitively by mcp, but graphify/serve.py imports it
@@ -108,7 +108,9 @@ robot = ["robotframework>=4.0"]
 all = ["mcp>=1,<3", "starlette>=1.3.1,<2", "neo4j", "falkordb", "pypdf>=6.16.1", "markdownify", "watchdog", "graspologic; python_version < '3.13'", "graspologic-native>=1.3.1,<2; python_version >= '3.13'", "python-docx", "openpyxl", "psycopg[binary]", "faster-whisper; python_version >= '3.11'", "yt-dlp>=2026.7.4", "matplotlib", "numpy>=2.0; python_version >= '3.13'", "openai", "tiktoken", "boto3", "anthropic", "tree-sitter-sql", "jieba; python_version < '3.12'", "jieba-py>=0.46.12,<1; python_version >= '3.12'", "tree-sitter-dm", "tree-sitter-hcl", "tree-sitter-pascal", "tree-sitter-ocaml", "tree-sitter-commonlisp", "robotframework>=4.0"]
 
 [project.scripts]
+dreamliner = "graphify.__main__:main"
 graphify = "graphify.__main__:main"
+dreamliner-mcp = "graphify.serve:_main"
 graphify-mcp = "graphify.serve:_main"
 
 [dependency-groups]
@@ -133,8 +135,8 @@ dev = [
 ]
 
 [tool.uv]
-# Install via: uv tool install graphifyy
-# Run without installing: uvx graphifyy install
+# Install via: uv tool install git+https://github.com/KRNichols/graphify
+# Run without installing: uvx --from git+https://github.com/KRNichols/graphify dreamliner install
 package = true
 
 [tool.setuptools]
@@ -142,12 +144,9 @@ packages = ["graphify", "graphify.extractors", "graphify.exporters"]
 include-package-data = false
 
 [tool.setuptools.package-data]
-# The skill bodies ship as graphify/skill*.md (the SKILL.md a host installs is
-# copied from one of these). The progressive-disclosure references sidecar ships
-# under graphify/skills/<host>/references/, and the always-on injection blocks
-# under graphify/always_on/. There is no graphify/skills/<host>/SKILL.md in the
-# repo, so no SKILL.md glob is needed here.
-graphify = ["skill.md", "skill-codex.md", "skill-opencode.md", "skill-kilo.md", "command-kilo.md", "skill-aider.md", "skill-amp.md", "skill-agents.md", "skill-copilot.md", "skill-claw.md", "skill-windows.md", "skill-droid.md", "skill-trae.md", "skill-kiro.md", "skill-vscode.md", "skill-pi.md", "skill-devin.md", "skills/*/references/*.md", "always_on/*.md"]
+# Codex-only variant: ship the Dreamliner Codex skill + AGENTS.md always-on block.
+# Other host skill bodies are not first-class in this fork.
+graphify = ["skill-codex.md", "skills/codex/references/*.md", "always_on/agents-md.md"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

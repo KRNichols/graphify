@@ -84,12 +84,7 @@ ALWAYS_ON_BASELINE_REF = f"{_V8_BASELINE_SHA}:graphify/__main__.py"
 # the matching fragment under fragments/always-on/. These are not platform-
 # specific, so they render once in a full run (not under --platform).
 ALWAYS_ON_BLOCKS = {
-    "claude-md": "_CLAUDE_MD_SECTION",
     "agents-md": "_AGENTS_MD_SECTION",
-    "gemini-md": "_GEMINI_MD_SECTION",
-    "vscode-instructions": "_VSCODE_INSTRUCTIONS_SECTION",
-    "antigravity-rules": "_ANTIGRAVITY_RULES",
-    "kiro-steering": "_KIRO_STEERING",
 }
 
 # Sanctioned divergences from the frozen always-on baseline above. The roundtrip
@@ -166,6 +161,17 @@ _TRAE_PRETOOLUSE_NOTE = (
     "the graph needs refreshing.\n"
 )
 _AGENTS_MD_HOOKS: dict[str, dict[str, str]] = {
+    "codex": {
+        "heading_suffix": " (Codex)",
+        "host_display": "Codex",
+        "install_block": "dreamliner install\n# or: dreamliner install --project",
+        "uninstall_block": "dreamliner uninstall  # remove the section",
+        "pretooluse_note": (
+            "\n> **Note:** Codex Desktop rejects `hookSpecificOutput.additionalContext` "
+            "on `PreToolUse`, so the registered hook is an intentional no-op. "
+            "AGENTS.md is the always-on mechanism.\n"
+        ),
+    },
     "trae": {
         "heading_suffix": " (Trae)",
         "host_display": "Trae",
@@ -271,7 +277,7 @@ class Platform:
     # split-only template inputs
     core: str | None = None
     refs_dst: str | None = None
-    name: str = "graphify"
+    name: str = "dreamliner"
     description: str | None = None
     trigger: str | None = None  # removed — not part of Agent Skills spec (#1180)
     dispatch: str | None = None
@@ -309,7 +315,7 @@ def load_platforms() -> dict[str, Platform]:
             skill_dst=cfg["skill_dst"],
             core=cfg.get("core"),
             refs_dst=cfg.get("refs_dst"),
-            name=cfg.get("name", "graphify"),
+            name=cfg.get("name", "dreamliner"),
             description=cfg.get("description"),
             trigger=cfg.get("trigger"),
             dispatch=cfg.get("dispatch"),

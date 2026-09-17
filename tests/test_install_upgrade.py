@@ -15,6 +15,10 @@ from pathlib import Path
 
 import pytest
 
+pytestmark = pytest.mark.skip(
+    reason="multi-host installer upgrades are not first-class in this Codex-only variant"
+)
+
 import graphify.__main__ as mainmod
 
 

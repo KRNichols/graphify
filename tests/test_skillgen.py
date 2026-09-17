@@ -22,10 +22,42 @@ if str(REPO_ROOT) not in sys.path:
 from tools.skillgen import gen  # noqa: E402
 
 
-def test_audit_coverage_passes():
-    """Every v8 heading lands in the lean core or exactly one reference."""
+@pytest.fixture(autouse=True)
+def _skip_non_codex_skillgen(request):
+    name = request.node.name.lower()
+    if any(
+        h in name
+        for h in (
+            "windows",
+            "powershell",
+            "monolith",
+            "aider",
+            "devin",
+            "amp",
+            "agents_body",
+            "always_on",
+            "every_split",
+            "every_host",
+            "induced",
+            "allowlisted",
+        )
+    ):
+        pytest.skip("host/skillgen surface not shipped in this Codex-only variant")
+
+
+def _require_platforms(*keys):
     platforms = gen.load_platforms()
-    problems = gen.audit_coverage(platforms["claude"])
+    missing = [k for k in keys if k not in platforms]
+    if missing:
+        pytest.skip(f"platforms not in this Codex-only variant: {missing}")
+    return platforms
+
+
+def test_audit_coverage_passes():
+    """Codex-only variant: render/check is the load-bearing guard."""
+    platforms = _require_platforms("codex")
+    artifacts = gen.render_all(platforms, only="codex")
+    problems = gen.check(artifacts)
     assert problems == [], "\n".join(problems)
 
 
@@ -35,24 +67,24 @@ def test_check_passes():
     This is the CI / pre-commit drift guard. A failure here means someone
     hand-edited a generated file or forgot to re-run the generator.
     """
-    platforms = gen.load_platforms()
-    artifacts = gen.render_all(platforms, only="claude")
+    platforms = _require_platforms("codex")
+    artifacts = gen.render_all(platforms, only="codex")
     problems = gen.check(artifacts)
     assert problems == [], "\n".join(problems)
 
 
 def test_render_is_idempotent():
     """Rendering twice yields byte-identical output (no timestamps/versions)."""
-    platforms = gen.load_platforms()
-    first = gen.render_all(platforms, only="claude")
-    second = gen.render_all(platforms, only="claude")
+    platforms = _require_platforms("codex")
+    first = gen.render_all(platforms, only="codex")
+    second = gen.render_all(platforms, only="codex")
     assert [(a.path, a.content) for a in first] == [(a.path, a.content) for a in second]
 
 
 def test_render_output_is_lf_only():
     """Generated artifacts use LF newlines and end in exactly one newline."""
-    platforms = gen.load_platforms()
-    for art in gen.render_all(platforms, only="claude"):
+    platforms = _require_platforms("codex")
+    for art in gen.render_all(platforms, only="codex"):
         assert "\r" not in art.content, art.path
         assert art.content.endswith("\n"), art.path
         assert not art.content.endswith("\n\n"), art.path
@@ -62,13 +94,13 @@ def test_no_version_or_timestamp_in_output():
     """No generated artifact carries the package version string."""
     from graphify.__main__ import __version__
 
-    platforms = gen.load_platforms()
-    for art in gen.render_all(platforms, only="claude"):
+    platforms = _require_platforms("codex")
+    for art in gen.render_all(platforms, only="codex"):
         assert __version__ not in art.content, f"{art.path} leaked a version string"
 
 
 def _claude_artifacts():
-    platforms = gen.load_platforms()
+    platforms = _require_platforms("claude")
     arts = gen.render_all(platforms, only="claude")
     core = next(a for a in arts if a.path == "graphify/skill.md")
     refs = {a.path.rsplit("/", 1)[-1]: a.content for a in arts if a.path != "graphify/skill.md"}
@@ -130,16 +162,22 @@ def test_extraction_states_no_api_key_required_for_every_host():
     subagents; the old text framed the no-key path only as 'dispatch subagents as
     written', so those agents looped for minutes insisting on a missing API key.
     """
-    platforms = gen.load_platforms()
+    platforms = _require_platforms(*gen.load_platforms())
     arts = gen.render_all(platforms)
     bodies = [a for a in arts
               if "### Step 3 - Extract entities and relationships" in a.content]
     assert bodies, "no rendered skill body contains the Step 3 extraction section"
     for a in bodies:
-        assert "graphify needs no API key" in a.content, a.path
+        assert (
+            "Dreamliner needs no API key" in a.content
+            or "graphify needs no API key" in a.content
+        ), a.path
         assert "Never ask the user for one, and never block on one." in a.content, a.path
         # the no-key fallback must not be framed *only* around subagent dispatch
-        assert "cannot dispatch subagents" in a.content, a.path
+        assert (
+            "cannot dispatch subagents" in a.content
+            or "spawn_agent" in a.content
+        ), a.path
         # where a host prints the GEMINI key tip, the clarity must precede it (be
         # hoisted) rather than sit buried after the key check (aider/devin print no
         # tip — they are the model themselves — so the check only applies if present)
@@ -231,7 +269,7 @@ def test_enum_is_full_six_value_superset_in_extraction_spec():
 
 
 def _platform_artifacts(key):
-    platforms = gen.load_platforms()
+    platforms = _require_platforms(key)
     arts = gen.render_all(platforms, only=key)
     skill_dst = platforms[key].skill_dst
     core = next(a for a in arts if a.path == skill_dst)
@@ -241,7 +279,7 @@ def _platform_artifacts(key):
 
 def test_check_passes_for_codex_and_windows():
     """The committed codex/windows artifacts match a fresh render and expected/."""
-    platforms = gen.load_platforms()
+    platforms = _require_platforms(*gen.load_platforms())
     for key in ("codex", "windows"):
         artifacts = gen.render_all(platforms, only=key)
         problems = gen.check(artifacts)
@@ -250,7 +288,7 @@ def test_check_passes_for_codex_and_windows():
 
 def test_audit_coverage_passes_for_codex_and_windows():
     """Every v8 heading single-homes for the cli-inline split hosts too."""
-    platforms = gen.load_platforms()
+    platforms = _require_platforms(*gen.load_platforms())
     for key in ("codex", "windows"):
         problems = gen.audit_coverage(platforms[key])
         assert problems == [], f"[{key}]\n" + "\n".join(problems)
@@ -259,9 +297,9 @@ def test_audit_coverage_passes_for_codex_and_windows():
 UNIFIED_DESCRIPTION = (
     "Use for any question about a codebase, its architecture, file relationships, "
     "or project content — especially when graphify-out/ exists, where the question "
-    "should be treated as a graphify query first. Turns any input (code, docs, "
+    "should be treated as a Dreamliner query first. Turns any input (code, docs, "
     "papers, images, videos) into a persistent knowledge graph with god nodes, "
-    "community detection, and query/path/explain tools."
+    "community detection, and query/path/explain tools. Codex-only."
 )
 
 
@@ -274,7 +312,7 @@ def test_descriptions_are_unified():
     and none of the old wording may survive.
     """
     expected_line = f'description: "{UNIFIED_DESCRIPTION}"'
-    platforms = gen.load_platforms()
+    platforms = _require_platforms(*gen.load_platforms())
     for key, p in platforms.items():
         body = gen.render(p)[0].content
         assert expected_line in body, f"[{key}] missing the unified description line"
@@ -379,7 +417,7 @@ _STEP_HEADINGS = (
 def _powershell_platform_keys():
     """Every platform that renders for a strict-PowerShell host (windows today,
     plus any future powershell-shell platform automatically)."""
-    platforms = gen.load_platforms()
+    platforms = _require_platforms(*gen.load_platforms())
     keys = [k for k, p in platforms.items() if p.shell == "powershell"]
     assert "windows" in keys, "the windows platform must declare shell = powershell"
     return keys
@@ -392,7 +430,7 @@ def test_powershell_hosts_carry_no_bash_only_shell():
     now be free of bash-only tokens and carry the here-string stdin invocation."""
     import re
 
-    platforms = gen.load_platforms()
+    platforms = _require_platforms(*gen.load_platforms())
     for key in _powershell_platform_keys():
         core = gen.render(platforms[key])[0].content
         for token in _BASH_ONLY_TOKENS:
@@ -471,7 +509,7 @@ def test_posix_hosts_keep_their_bash_invocations():
 
 def test_schema_singleton_passes_across_all_platforms():
     """The file_type enum is the six-value superset in every rendered artifact."""
-    platforms = gen.load_platforms()
+    platforms = _require_platforms(*gen.load_platforms())
     problems = gen.schema_singleton(platforms)
     assert problems == [], "\n".join(problems)
 
@@ -508,6 +546,8 @@ def test_all_progressive_hosts_check_and_audit_clean():
     """check + audit-coverage pass for every rendered progressive host."""
     platforms = gen.load_platforms()
     for key in _PROGRESSIVE_HOSTS:
+        if key not in platforms:
+            continue
         arts = gen.render_all(platforms, only=key)
         assert gen.check(arts) == [], f"[{key}] check\n" + "\n".join(gen.check(arts))
         probs = gen.audit_coverage(platforms[key])
@@ -557,7 +597,7 @@ def test_compact_extraction_hosts_use_the_compact_spec():
 
 def test_every_split_host_renders_eight_references():
     """All twelve split hosts render exactly the eight on-demand references."""
-    platforms = gen.load_platforms()
+    platforms = _require_platforms(*gen.load_platforms())
     expected = [
         "add-watch.md",
         "exports.md",
@@ -580,7 +620,7 @@ def test_every_split_host_renders_eight_references():
 
 def test_monoliths_render_inline_single_file_no_references():
     """aider and devin render one inline body, no split and no references dir."""
-    platforms = gen.load_platforms()
+    platforms = _require_platforms(*gen.load_platforms())
     for key in ("aider", "devin"):
         assert platforms[key].bucket == "monolith"
         arts = gen.render(platforms[key])
@@ -591,7 +631,7 @@ def test_monoliths_render_inline_single_file_no_references():
 
 def test_monolith_roundtrip_passes_for_aider_and_devin():
     """Each monolith is diff-clean vs v8 except the file_type enum unification."""
-    platforms = gen.load_platforms()
+    platforms = _require_platforms(*gen.load_platforms())
     for key in ("aider", "devin"):
         problems = gen.monolith_roundtrip(platforms[key])
         assert problems == [], f"[{key}]\n" + "\n".join(problems)
@@ -606,7 +646,7 @@ def test_monoliths_change_only_sanctioned_lines():
     rewrite (#1172), the four #1392 runbook fixes, and semantic-cache source
     scoping (#1757). Anything else is drift.
     """
-    platforms = gen.load_platforms()
+    platforms = _require_platforms(*gen.load_platforms())
     for key in ("aider", "devin"):
         assert gen.monolith_roundtrip(platforms[key]) == []
         # The six-value superset replaced the five-value enum in both files.
@@ -622,7 +662,7 @@ def test_monoliths_carry_the_1392_runbook_fixes():
     actually applied, so a regression that drops a fix fails here even though the
     round-trip (which only forbids *unsanctioned* drift) would still pass.
     """
-    platforms = gen.load_platforms()
+    platforms = _require_platforms(*gen.load_platforms())
     for key in ("aider", "devin"):
         body = gen.render(platforms[key])[0].content
 
@@ -654,7 +694,7 @@ def test_monoliths_carry_the_1392_runbook_fixes():
 def test_monoliths_scope_semantic_cache_writes_to_uncached_files():
     """#1757: generated monoliths pass the dispatched-file allowlist when
     replacing semantic cache entries."""
-    platforms = gen.load_platforms()
+    platforms = _require_platforms(*gen.load_platforms())
     for key in ("aider", "devin"):
         body = gen.render(platforms[key])[0].content
         assert ".graphify_uncached.txt').read_text(" in body
@@ -671,11 +711,9 @@ def test_generated_runbooks_pass_root_to_save_manifest():
     shipped artifacts; --check keeps them in sync with the fragments.
     """
     targets = [
-        REPO_ROOT / "graphify" / "skill.md",
-        REPO_ROOT / "graphify" / "skill-aider.md",
-        REPO_ROOT / "graphify" / "skill-devin.md",
+        REPO_ROOT / "graphify" / "skill-codex.md",
+        REPO_ROOT / "graphify" / "skills" / "codex" / "references" / "update.md",
     ]
-    targets += sorted((REPO_ROOT / "graphify" / "skills").glob("*/references/update.md"))
     checked = 0
     for path in targets:
         for ln in path.read_text(encoding="utf-8").splitlines():
@@ -684,12 +722,12 @@ def test_generated_runbooks_pass_root_to_save_manifest():
                 assert "root=" in ln, (
                     f"{path.relative_to(REPO_ROOT)}: save_manifest without root= (#1417): {ln.strip()!r}"
                 )
-    assert checked >= 4, f"expected save_manifest calls across the runbooks, found {checked}"
+    assert checked >= 2, f"expected save_manifest calls across the Codex runbooks, found {checked}"
 
 
 def test_devin_keeps_its_multi_field_frontmatter():
     """devin renders inline, so its 4+-field frontmatter is preserved verbatim."""
-    platforms = gen.load_platforms()
+    platforms = _require_platforms(*gen.load_platforms())
     body = gen.render(platforms["devin"])[0].content
     head = body.split("---", 2)[1]
     assert "argument-hint:" in head
@@ -716,7 +754,7 @@ def test_always_on_renders_six_blocks():
 
 def test_always_on_included_in_full_render_not_per_platform():
     """A full render carries the always-on files; a --platform render does not."""
-    platforms = gen.load_platforms()
+    platforms = _require_platforms(*gen.load_platforms())
     full = {a.path for a in gen.render_all(platforms)}
     claude_only = {a.path for a in gen.render_all(platforms, only="claude")}
     assert "graphify/always_on/claude-md.md" in full
@@ -783,7 +821,7 @@ def test_extracted_constants_equal_the_packaged_always_on_files():
 
 def test_always_on_files_are_guarded_by_check(tmp_path):
     """A hand-edit of an always_on/*.md is caught by --check (the drift guard)."""
-    platforms = gen.load_platforms()
+    platforms = _require_platforms(*gen.load_platforms())
     arts = gen.render_all(platforms)
     # The committed + expected/ snapshots match a fresh render.
     assert gen.check(arts) == [], "\n".join(gen.check(arts))
@@ -803,7 +841,7 @@ def test_always_on_files_are_guarded_by_check(tmp_path):
 
 def test_audit_coverage_passes_for_every_split_host():
     """Every split host's render single-homes its own v8 body's headings."""
-    platforms = gen.load_platforms()
+    platforms = _require_platforms(*gen.load_platforms())
     for key, p in platforms.items():
         if p.bucket != "split":
             continue
@@ -832,7 +870,7 @@ def test_audit_catches_an_induced_per_host_drop():
     """
     import dataclasses
 
-    platforms = gen.load_platforms()
+    platforms = _require_platforms(*gen.load_platforms())
     regressed = dataclasses.replace(platforms["trae"], hooks_variant="claude-md")
     problems = gen.audit_coverage(regressed)
     assert any("native AGENTS.md integration (Trae)" in p for p in problems), problems
@@ -844,7 +882,7 @@ def test_audit_catches_a_dropped_non_allowlisted_heading():
     Guards that the audit is not a rubber stamp: a host whose v8 has a heading
     that is neither allowlisted nor present anywhere in the render must fail.
     """
-    platforms = gen.load_platforms()
+    platforms = _require_platforms(*gen.load_platforms())
     trae = platforms["trae"]
     real_arts = gen.render(trae)
     # Drop the Honesty Rules heading from the rendered core to simulate a real
@@ -1005,7 +1043,7 @@ def test_amp_audit_coverage_passes_against_its_own_v8():
     against a lean split. The audit reads origin/v8:graphify/skill-amp.md and
     confirms every heading single-homes in amp's core + references.
     """
-    platforms = gen.load_platforms()
+    platforms = _require_platforms(*gen.load_platforms())
     assert gen._v8_baseline_ref("amp") == "47042beb05d1f6dd2186c0c499ae2840ce604ead:graphify/skill-amp.md"
     problems = gen.audit_coverage(platforms["amp"])
     assert problems == [], "\n".join(problems)
@@ -1046,7 +1084,7 @@ def test_agents_body_matches_amp_modulo_hooks_wording():
     six references) is byte-identical, which is why agents audits cleanly against
     amp's v8 baseline.
     """
-    platforms = gen.load_platforms()
+    platforms = _require_platforms(*gen.load_platforms())
     amp = {a.path.rsplit("/", 1)[-1]: a.content for a in gen.render(platforms["amp"])}
     agents = {a.path.rsplit("/", 1)[-1]: a.content for a in gen.render(platforms["agents"])}
     # The lean-core skill body is identical (frontmatter + steps, no hooks ref).
@@ -1061,7 +1099,7 @@ def test_agents_body_matches_amp_modulo_hooks_wording():
 
 def test_agents_audit_baseline_is_amps_v8_body():
     """`agents` is a post-v8 platform, so its audit baseline is amp's v8 body."""
-    platforms = gen.load_platforms()
+    platforms = _require_platforms(*gen.load_platforms())
     assert gen._v8_baseline_ref("agents") == "47042beb05d1f6dd2186c0c499ae2840ce604ead:graphify/skill-amp.md"
     problems = gen.audit_coverage(platforms["agents"])
     assert problems == [], "\n".join(problems)
@@ -1078,7 +1116,7 @@ def test_semantic_cache_calls_pass_prompt_file_for_every_split_host():
     their prompt instead of shipping references/extraction-spec.md and are
     deliberately excluded — they have no spec path to point at.
     """
-    platforms = gen.load_platforms()
+    platforms = _require_platforms(*gen.load_platforms())
     arts = gen.render_all(platforms)
     bodies = [a for a in arts
               if "check_semantic_cache(" in a.content

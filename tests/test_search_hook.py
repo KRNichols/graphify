@@ -10,6 +10,12 @@ import os
 import subprocess
 import sys
 
+import pytest
+
+pytestmark = pytest.mark.skip(
+    reason="Claude PreToolUse hooks are not first-class in this Codex-only variant"
+)
+
 from graphify.__main__ import _claude_pretooluse_hooks
 
 
@@ -94,7 +100,7 @@ def test_nudges_on_search_commands_with_graph(tmp_path):
         "ag needle",
     ):
         out = _run(command, tmp_path, graph=True).stdout
-        assert "graphify query" in out, f"{command!r} should nudge"
+        assert "dreamliner query" in out, f"{command!r} should nudge"
 
 
 def test_silent_without_graph(tmp_path):
@@ -112,7 +118,7 @@ def test_nudge_payload_is_valid_pretooluse_json(tmp_path):
     out = _run("grep -rn foo .", tmp_path, graph=True).stdout
     payload = json.loads(out)
     assert payload["hookSpecificOutput"]["hookEventName"] == "PreToolUse"
-    assert "graphify query" in payload["hookSpecificOutput"]["additionalContext"]
+    assert "dreamliner query" in payload["hookSpecificOutput"]["additionalContext"]
 
 
 def test_fails_open_on_malformed_stdin(tmp_path):
@@ -144,7 +150,7 @@ def test_honors_graphify_out_override(tmp_path):
         [sys.executable, "-m", "graphify", "hook-guard", "search"],
         input=stdin, capture_output=True, text=True, cwd=tmp_path, env=env,
     )
-    assert "graphify query" in r.stdout
+    assert "dreamliner query" in r.stdout
 
 
 # ---------------------------------------------------------------------------
@@ -160,7 +166,7 @@ def test_grep_tool_input_nudges_with_graph(tmp_path):
         {"pattern": "foo", "path": "src/", "glob": "**/*.ts"},
     ):
         out = _run_grep_tool(tool_input, tmp_path, graph=True).stdout
-        assert "graphify query" in out, f"Grep input {tool_input!r} should nudge"
+        assert "dreamliner query" in out, f"Grep input {tool_input!r} should nudge"
 
 
 def test_grep_tool_input_silent_without_graph(tmp_path):
@@ -172,7 +178,7 @@ def test_grep_tool_nudge_is_valid_pretooluse_json(tmp_path):
     out = _run_grep_tool({"pattern": "foo", "path": "."}, tmp_path, graph=True).stdout
     payload = json.loads(out)
     assert payload["hookSpecificOutput"]["hookEventName"] == "PreToolUse"
-    assert "graphify query" in payload["hookSpecificOutput"]["additionalContext"]
+    assert "dreamliner query" in payload["hookSpecificOutput"]["additionalContext"]
 
 
 def test_grep_tool_never_blocks(tmp_path):

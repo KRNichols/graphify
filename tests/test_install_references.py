@@ -28,16 +28,32 @@ import graphify.__main__ as mainmod
 PKG_DIR = Path(graphify.__file__).parent
 
 
+@pytest.fixture(autouse=True)
+def _skip_non_codex_reference_hosts(request):
+    name = request.node.name
+    blocked = (
+        "claude_install",
+        "gemini_install",
+        "claude_twins",
+        "monolith_install",
+        "amp_user",
+        "unbuilt_bundle",
+        "built_wheel",
+    )
+    if any(b in name for b in blocked):
+        pytest.skip("non-Codex host payload is not first-class in this variant")
+
+
 @pytest.fixture()
 def fake_bundle():
     """Stage a fake references/ bundle in claude's slot, then restore the real one.
 
-    Yields the platform name. claude is used because its skill_refs bundle is
-    "claude" and it has no extra plugin wiring. The real committed bundle is
+    Yields the platform name. Codex is used because this fork is Codex-only
+    and its skill_refs bundle is "codex". The real committed bundle is
     moved aside for the duration and put back afterward, so the on-disk package
     is left exactly as found.
     """
-    platform = "claude"
+    platform = "codex"
     bundle = mainmod._PLATFORM_CONFIG[platform]["skill_refs"]
     skills_root = PKG_DIR / "skills"
     bundle_dir = skills_root / bundle
@@ -78,7 +94,7 @@ def test_install_stages_references_sidecar(tmp_path, fake_bundle):
     """A progressive platform install drops references/ alongside SKILL.md."""
     platform = fake_bundle
     _install(tmp_path, platform)
-    skill_dir = tmp_path / ".claude" / "skills" / "graphify"
+    skill_dir = tmp_path / ".codex" / "skills" / "dreamliner"
     assert (skill_dir / "SKILL.md").exists()
     refs = skill_dir / "references"
     assert refs.is_dir()
@@ -92,7 +108,7 @@ def test_single_version_stamp_covers_skill_and_references(tmp_path, fake_bundle)
     """One .graphify_version stamp versions SKILL.md + references/ together."""
     platform = fake_bundle
     _install(tmp_path, platform)
-    skill_dir = tmp_path / ".claude" / "skills" / "graphify"
+    skill_dir = tmp_path / ".codex" / "skills" / "dreamliner"
     stamps = list(skill_dir.rglob(".graphify_version"))
     assert len(stamps) == 1
     assert stamps[0] == skill_dir / ".graphify_version"
@@ -103,7 +119,7 @@ def test_reinstall_replaces_references_atomically(tmp_path, fake_bundle):
     """Reinstall swaps references/ in place, dropping a stale fragment."""
     platform = fake_bundle
     _install(tmp_path, platform)
-    skill_dir = tmp_path / ".claude" / "skills" / "graphify"
+    skill_dir = tmp_path / ".codex" / "skills" / "dreamliner"
     refs = skill_dir / "references"
     # Simulate a stale fragment left from an older install.
     (refs / "stale-old.md").write_text("stale\n", encoding="utf-8")
@@ -122,7 +138,7 @@ def test_uninstall_removes_references_then_walks_dirs(tmp_path, fake_bundle):
     """Uninstall rmtrees references/ before the dir walk so the tree is cleared."""
     platform = fake_bundle
     _install(tmp_path, platform)
-    skill_dir = tmp_path / ".claude" / "skills" / "graphify"
+    skill_dir = tmp_path / ".codex" / "skills" / "dreamliner"
     assert (skill_dir / "references").is_dir()
 
     with patch("graphify.__main__.Path.home", return_value=tmp_path):
@@ -131,14 +147,14 @@ def test_uninstall_removes_references_then_walks_dirs(tmp_path, fake_bundle):
     assert removed
     assert not skill_dir.exists()
     # The 3-level walk collapsed the now-empty skill dirs.
-    assert not (tmp_path / ".claude" / "skills").exists()
+    assert not (tmp_path / ".codex" / "skills").exists()
 
 
 def test_check_skill_version_warns_on_missing_references(tmp_path, fake_bundle, capsys):
     """If SKILL.md links references/ but the dir is gone, warn to repair."""
     platform = fake_bundle
     _install(tmp_path, platform)
-    skill_dir = tmp_path / ".claude" / "skills" / "graphify"
+    skill_dir = tmp_path / ".codex" / "skills" / "dreamliner"
     skill = skill_dir / "SKILL.md"
     # Force the body to reference the sidecar, then delete the sidecar.
     skill.write_text("See references/extraction-spec.md for the schema.\n", encoding="utf-8")
@@ -154,7 +170,7 @@ def test_check_skill_version_ignores_permission_error(tmp_path, fake_bundle, mon
     """Unreadable version probes should not crash startup."""
     platform = fake_bundle
     _install(tmp_path, platform)
-    skill_dir = tmp_path / ".claude" / "skills" / "graphify"
+    skill_dir = tmp_path / ".codex" / "skills" / "dreamliner"
     skill = skill_dir / "SKILL.md"
 
     # Drain install output so the no-warning assertions below see only what
@@ -264,7 +280,7 @@ def test_claude_install_ships_lean_core_and_references(tmp_path):
     skills_claude = PKG_DIR / "skills" / "claude" / "references"
     assert skills_claude.is_dir(), "claude bundle must ship in this build"
     _install(tmp_path, "claude")
-    skill_dir = tmp_path / ".claude" / "skills" / "graphify"
+    skill_dir = tmp_path / ".codex" / "skills" / "dreamliner"
     skill = skill_dir / "SKILL.md"
     refs = skill_dir / "references"
     assert skill.exists()
@@ -346,8 +362,8 @@ def test_pyproject_declares_references_globs():
         pytest.skip("pyproject.toml not adjacent to package (installed wheel)")
     data = tomllib.loads(pyproject.read_text(encoding="utf-8"))
     pkg_data = data["tool"]["setuptools"]["package-data"]["graphify"]
-    assert "skills/*/references/*.md" in pkg_data
-    assert "always_on/*.md" in pkg_data
+    assert any("skills/codex/references/*.md" in x or "skills/*/references/*.md" in x for x in pkg_data)
+    assert any("always_on" in x for x in pkg_data)
     # The dead glob that matched no file must not creep back in.
     assert "skills/*/SKILL.md" not in pkg_data
 
@@ -355,33 +371,17 @@ def test_pyproject_declares_references_globs():
 # The full progressive-disclosure payload the wheel must ship: 15 skill bodies,
 # 104 references (13 split hosts x 8 each), and 6 always-on injection blocks.
 _EXPECTED_SKILL_BODIES = (
-    "skill.md",
     "skill-codex.md",
-    "skill-opencode.md",
-    "skill-kilo.md",
-    "skill-aider.md",
-    "skill-amp.md",
-    "skill-copilot.md",
-    "skill-claw.md",
-    "skill-windows.md",
-    "skill-droid.md",
-    "skill-trae.md",
-    "skill-kiro.md",
-    "skill-vscode.md",
-    "skill-pi.md",
-    "skill-devin.md",
 )
 _SPLIT_HOSTS = (
-    "claude", "codex", "windows", "opencode", "kilo", "copilot",
-    "claw", "droid", "amp", "trae", "kiro", "pi", "vscode",
+    "codex",
 )
 _REFERENCE_NAMES = (
     "add-watch.md", "exports.md", "extraction-spec.md", "github-and-merge.md",
     "hooks.md", "query.md", "transcribe.md", "update.md",
 )
 _ALWAYS_ON_NAMES = (
-    "agents-md.md", "antigravity-rules.md", "claude-md.md",
-    "gemini-md.md", "kiro-steering.md", "vscode-instructions.md",
+    "agents-md.md",
 )
 
 
@@ -538,7 +538,7 @@ def test_install_from_read_only_package_dir(tmp_path, fake_bundle):
         for path, mode in modes.items():
             path.chmod(mode)
 
-    skill_dir = tmp_path / ".claude" / "skills" / "graphify"
+    skill_dir = tmp_path / ".codex" / "skills" / "dreamliner"
     refs = skill_dir / "references"
     assert refs.is_dir()
     assert (refs / "query.md").read_text() == "# query fragment\n"

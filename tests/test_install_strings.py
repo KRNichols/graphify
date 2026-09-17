@@ -15,51 +15,31 @@ from graphify.__main__ import (
     _SEARCH_NUDGE,
     _READ_NUDGE,
     _skill_registration,
-    _CLAUDE_MD_SECTION,
     _AGENTS_MD_SECTION,
-    _GEMINI_MD_SECTION,
-    _GEMINI_NUDGE_TEXT,
-    _VSCODE_INSTRUCTIONS_SECTION,
-    _ANTIGRAVITY_RULES,
-    _KIRO_STEERING,
-    _CURSOR_RULE,
-    _OPENCODE_PLUGIN_JS,
-    _DEVIN_RULES,
 )
 
 
-# All install-surface text rendered as plain strings, in one place.
-# Hook constants are dicts/JSON; serialize them so we can do substring checks
-# against the actual payload text the assistant will receive.
+# Codex-only install surfaces. Leftover host blocks are not shipped.
 _INSTALL_TEXTS: dict[str, str] = {
     "_SEARCH_NUDGE": _SEARCH_NUDGE,
     "_READ_NUDGE": _READ_NUDGE,
-    "_CLAUDE_MD_SECTION": _CLAUDE_MD_SECTION,
     "_AGENTS_MD_SECTION": _AGENTS_MD_SECTION,
-    "_GEMINI_MD_SECTION": _GEMINI_MD_SECTION,
-    "_GEMINI_NUDGE_TEXT": _GEMINI_NUDGE_TEXT,
-    "_VSCODE_INSTRUCTIONS_SECTION": _VSCODE_INSTRUCTIONS_SECTION,
-    "_ANTIGRAVITY_RULES": _ANTIGRAVITY_RULES,
-    "_KIRO_STEERING": _KIRO_STEERING,
-    "_CURSOR_RULE": _CURSOR_RULE,
-    "_OPENCODE_PLUGIN_JS": _OPENCODE_PLUGIN_JS,
-    "_DEVIN_RULES": _DEVIN_RULES,
 }
 
 
 def test_every_install_surface_recommends_graphify_query():
-    """All ten install surfaces must point the assistant at `graphify query`
+    """Codex install surfaces must point the assistant at `dreamliner query`
     as the first action for codebase questions. This is the load-bearing
     fix for issue #580 — the alternative (reading GRAPH_REPORT.md) costs
     ~10x more tokens per question and made the project worse-than-baseline
     in real Claude Code sessions."""
     missing: list[str] = []
     for name, text in _INSTALL_TEXTS.items():
-        if "graphify query" not in text:
+        if "graphify query" not in text and "dreamliner query" not in text:
             missing.append(name)
     assert not missing, (
-        f"these install surfaces no longer mention `graphify query`: {missing}. "
-        f"If you removed it intentionally, consider whether issue #580 is back."
+        f"these install surfaces no longer mention `graphify query` or "
+        f"`dreamliner query`: {missing}."
     )
 
 
@@ -103,14 +83,7 @@ def test_report_is_still_referenced_as_fallback():
     (Hook payloads may or may not name the report; check the MD sections
     explicitly — those are the rule lists assistants follow.)"""
     md_section_texts = {
-        "_CLAUDE_MD_SECTION": _CLAUDE_MD_SECTION,
         "_AGENTS_MD_SECTION": _AGENTS_MD_SECTION,
-        "_GEMINI_MD_SECTION": _GEMINI_MD_SECTION,
-        "_VSCODE_INSTRUCTIONS_SECTION": _VSCODE_INSTRUCTIONS_SECTION,
-        "_ANTIGRAVITY_RULES": _ANTIGRAVITY_RULES,
-        "_KIRO_STEERING": _KIRO_STEERING,
-        "_CURSOR_RULE": _CURSOR_RULE,
-        "_DEVIN_RULES": _DEVIN_RULES,
     }
     missing: list[str] = []
     for name, text in md_section_texts.items():
@@ -125,20 +98,29 @@ def test_report_is_still_referenced_as_fallback():
 
 def test_agents_section_does_not_skip_dirty_graph_output():
     assert "Dirty graphify-out/ files are expected" in _AGENTS_MD_SECTION
-    assert "not a reason to skip graphify" in _AGENTS_MD_SECTION
+    assert (
+        "not a reason to skip Dreamliner" in _AGENTS_MD_SECTION
+        or "not a reason to skip graphify" in _AGENTS_MD_SECTION
+    )
 
 
 def test_agents_section_uses_generic_graphify_instruction():
     assert "`skill` tool" not in _AGENTS_MD_SECTION
     assert 'skill: "graphify"' not in _AGENTS_MD_SECTION
-    assert "use the installed graphify skill" in _AGENTS_MD_SECTION
+    assert (
+        "use the installed Dreamliner skill" in _AGENTS_MD_SECTION
+        or "use the installed graphify skill" in _AGENTS_MD_SECTION
+    )
 
 
 def test_skill_registration_uses_host_generic_instruction():
     reg = _skill_registration()
     assert 'skill: "graphify"' not in reg
     assert "Skill tool" not in reg
-    assert "use the installed graphify skill or instructions" in reg
+    assert (
+        "use the installed Dreamliner skill or instructions" in reg
+        or "use the installed graphify skill or instructions" in reg
+    )
 
 
 def test_how_it_works_clarifies_code_only_semantic_extraction():

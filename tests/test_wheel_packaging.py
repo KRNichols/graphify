@@ -36,8 +36,8 @@ def _skill_bodies() -> list[Path]:
     motivated adding the agents platform's skill-agents.md to package-data."""
     from graphify.__main__ import _PLATFORM_CONFIG
 
-    names = {cfg["skill_file"] for cfg in _PLATFORM_CONFIG.values()}
-    return sorted({PKG / name for name in names})
+    # Codex-only variant: only the Dreamliner Codex skill ships in the wheel.
+    return [PKG / "skill-codex.md"]
 
 
 def _expected_artifacts() -> list[Path]:
@@ -64,7 +64,7 @@ def wheel_namelist(tmp_path_factory) -> set[str]:
     )
     if proc.returncode != 0:
         pytest.skip(f"wheel build failed in this env:\n{proc.stderr[-800:]}")
-    wheels = list(out.glob("graphifyy-*.whl"))
+    wheels = list(out.glob("dreamliner-*.whl")) or list(out.glob("graphifyy-*.whl"))
     assert wheels, "no wheel produced"
     with zipfile.ZipFile(max(wheels, key=lambda p: p.stat().st_mtime)) as z:
         return set(z.namelist())

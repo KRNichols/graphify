@@ -1,8 +1,11 @@
-# How graphify works
+# How Dreamliner works
+
+Dreamliner is the Codex-only product name for this graph engine. The Python
+package and on-disk graph directory remain `graphify` / `graphify-out`.
 
 ## The three passes
 
-graphify processes your files in three passes:
+Dreamliner processes your files in three passes:
 
 **Pass 1 — Code structure (free, no API calls)**
 Tree-sitter parses your code files and extracts classes, functions, imports, call graphs, and inline comments. This runs locally with no LLM involved. 25 languages supported. SQL files get special treatment: tables, views, foreign keys, and JOIN relationships are extracted deterministically.
@@ -12,8 +15,8 @@ Code files are not sent to the LLM semantic extractor in the normal pipeline. If
 **Pass 2 — Video and audio (local, no API calls)**
 Video and audio files are transcribed with faster-whisper. To focus the transcript on your domain, the transcription prompt is seeded with your top god nodes (the most-connected concepts in your code graph so far). Transcripts are cached — re-runs skip already-processed files.
 
-**Pass 3 — Docs, papers, images (Claude subagents, costs tokens)**
-Claude runs in parallel over markdown, PDFs, images, and transcripts. Each subagent reads a batch of files and outputs a JSON fragment: nodes, edges, and any group relationships. The fragments are merged into a single graph.
+**Pass 3 — Docs, papers, images (Codex subagents, costs tokens)**
+Codex `spawn_agent` workers run in parallel over markdown, PDFs, images, and transcripts. Each subagent reads a batch of files and outputs a JSON fragment: nodes, edges, and any group relationships. The fragments are merged into a single graph.
 
 Before Pass 3, optional converters turn supported pointer/binary formats into
 Markdown sidecars under `graphify-out/converted/`. Office files (`.docx`,
@@ -27,7 +30,7 @@ Markdown sidecars under `graphify-out/converted/`. Office files (`.docx`,
 
 Communities are found using the [Leiden algorithm](https://www.nature.com/articles/s41598-019-41695-z) — a graph-clustering method that groups nodes by edge density. Nodes with many connections between them end up in the same community.
 
-**No embeddings needed.** The semantic similarity edges that Claude extracts (`semantically_similar_to`) are already in the graph, so they influence community shape directly. The graph structure is the similarity signal — there's no separate embedding step or vector database.
+**No embeddings needed.** The semantic similarity edges that extraction writes (`semantically_similar_to`) are already in the graph, so they influence community shape directly. The graph structure is the similarity signal — there's no separate embedding step or vector database.
 
 ---
 
@@ -38,7 +41,7 @@ Every relationship is tagged with one of three labels:
 | Tag | Meaning |
 |-----|---------|
 | `EXTRACTED` | Found directly in the source (e.g. a function call, an import) |
-| `INFERRED` | A reasonable inference Claude made, with a `confidence_score` (0.0–1.0) |
+| `INFERRED` | A reasonable inference the semantic pass made, with a `confidence_score` (0.0–1.0) |
 | `AMBIGUOUS` | Uncertain — flagged in the report for manual review |
 
 EXTRACTED edges always have confidence 1.0. INFERRED edges use a discrete rubric:
@@ -70,7 +73,7 @@ Each `worked/` folder in the repo has the raw input files and actual output (`GR
 
 ## Parallel extraction
 
-Code files are extracted in parallel using `ProcessPoolExecutor` — bypasses Python's GIL for genuine multiprocessing. Doc/paper/image batches are dispatched as parallel Claude subagents. On a corpus of 84 code files, parallel AST extraction runs in about 1.66x less time than sequential.
+Code files are extracted in parallel using `ProcessPoolExecutor` — bypasses Python's GIL for genuine multiprocessing. Doc/paper/image batches are dispatched as parallel Codex subagents. On a corpus of 84 code files, parallel AST extraction runs in about 1.66x less time than sequential.
 
 ---
 

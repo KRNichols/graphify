@@ -1,6 +1,11 @@
 """Tests for graphify claude install / uninstall commands."""
 from pathlib import Path
 import pytest
+
+pytestmark = pytest.mark.skip(
+    reason="Claude Code is not a first-class host in this Codex-only variant"
+)
+
 from graphify.__main__ import claude_install, claude_uninstall, _CLAUDE_MD_MARKER, _CLAUDE_MD_SECTION
 
 

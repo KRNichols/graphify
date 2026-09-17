@@ -1,6 +1,11 @@
 # Changelog
 
-Full release notes with details on each version: [GitHub Releases](https://github.com/safishamsi/graphify/releases)
+Full release notes with details on each version: [GitHub Releases](https://github.com/KRNichols/graphify/releases)
+
+## 0.9.64 (2026-09-17)
+
+- Product: this fork is now **Dreamliner**, a Codex-only variant. The skill is `$dreamliner`, the CLI is `dreamliner` (`graphify` remains a compatibility alias), and docs/install no longer treat Claude Code, Cursor, Gemini CLI, or other hosts as first-class. The graph engine is unchanged (`import graphify`, `graphify-out/`).
+- Fix: query/path/explain/affected/god-nodes now print actionable errors for a missing, empty, or corrupt graph instead of a stack trace.
 
 ## 0.9.63 (2026-09-16)
 

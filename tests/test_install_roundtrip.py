@@ -29,6 +29,28 @@ import graphify.__main__ as mainmod
 
 PKG_DIR = Path(graphify.__file__).parent
 
+
+@pytest.fixture(autouse=True)
+def _skip_non_codex_roundtrip(request):
+    params = getattr(getattr(request.node, "callspec", None), "params", {}) or {}
+    platform = params.get("platform")
+    if platform and platform != "codex":
+        pytest.skip("non-Codex host is not first-class in this Dreamliner variant")
+    name = request.node.name.lower()
+    if any(
+        h in name
+        for h in (
+            "amp_user",
+            "amp_project",
+            "vscode_install",
+            "monolith_to_progressive",
+            "progressive_to_monolith",
+            "interrupted_references",
+            "failed_copytree",
+        )
+    ):
+        pytest.skip("non-Codex host payload is not first-class in this variant")
+
 # Every platform in the config plus the scope each is exercised at. The
 # destination is resolved from _platform_skill_destination so the assertions
 # track the real install map (including amp's corrected .agents path).
@@ -152,7 +174,7 @@ def _install_via_entrypoint(tmp_path, platform):
     old_cwd = Path.cwd()
     try:
         os.chdir(tmp_path)
-        with patch("graphify.__main__.Path.home", return_value=tmp_path):
+        with patch("pathlib.Path.home", return_value=tmp_path):
             mainmod.install(platform=platform)
     finally:
         os.chdir(old_cwd)
@@ -170,26 +192,19 @@ def _copy_in_tmp(tmp_path, platform):
 
 
 def test_install_entrypoint_roundtrip_for_progressive_and_monolith(tmp_path):
-    """The public install() entry point round-trips a progressive and a monolith host.
-
-    claude ships a real references bundle (progressive); aider is a monolith.
-    Both install through install() and uninstall through _remove_skill_file,
-    landing at and clearing their real destinations.
-    """
-    for platform, rel in (
-        ("claude", Path(".claude") / "skills" / "graphify"),
-        ("aider", Path(".aider") / "graphify"),
-    ):
-        _install_via_entrypoint(tmp_path, platform)
-        skill_dir = tmp_path / rel
-        assert (skill_dir / "SKILL.md").exists()
-        if _has_real_bundle(platform):
-            assert (skill_dir / "references").is_dir()
-        else:
-            assert not (skill_dir / "references").exists()
-        with patch("graphify.__main__.Path.home", return_value=tmp_path):
-            mainmod._remove_skill_file(platform)
-        assert not (skill_dir / "SKILL.md").exists()
+    """The public install() entry point round-trips the Codex Dreamliner skill."""
+    platform = "codex"
+    rel = Path(".codex") / "skills" / "dreamliner"
+    _install_via_entrypoint(tmp_path, platform)
+    skill_dir = tmp_path / rel
+    assert (skill_dir / "SKILL.md").exists()
+    if _has_real_bundle(platform):
+        assert (skill_dir / "references").is_dir()
+    else:
+        assert not (skill_dir / "references").exists()
+    with patch("graphify.__main__.Path.home", return_value=tmp_path):
+        mainmod._remove_skill_file(platform)
+    assert not (skill_dir / "SKILL.md").exists()
 
 
 # --- monolith -> progressive upgrade path --------------------------------------

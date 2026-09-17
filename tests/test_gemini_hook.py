@@ -10,6 +10,12 @@ import os
 import subprocess
 import sys
 
+import pytest
+
+pytestmark = pytest.mark.skip(
+    reason="Gemini CLI is not a first-class host in this Codex-only variant"
+)
+
 from graphify.__main__ import _gemini_hook
 
 

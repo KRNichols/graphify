@@ -4,6 +4,10 @@ import sys
 from unittest.mock import patch
 import pytest
 
+pytestmark = pytest.mark.skip(
+    reason="Devin is not a first-class host in this Codex-only variant"
+)
+
 
 # ---------------------------------------------------------------------------
 # Helpers
